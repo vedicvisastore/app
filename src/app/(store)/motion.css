@@ -62,15 +62,42 @@
   100% { transform: translate(-20px, 110vh) rotate(420deg); opacity: 0.2; }
 }
 
-/* Sticky header tint: a soft pastel of the section passing under it (header.tsx reads data-tint). Theme tokens, so every theme works. */
-.vv-header { transition: background-color 0.6s ease, border-color 0.6s ease; }
-.vv-header[data-tint="royal"] { background-color: color-mix(in oklab, var(--color-royal) 17%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-royal) 32%, var(--color-paper)); }
-.vv-header[data-tint="gulal"] { background-color: color-mix(in oklab, var(--color-gulal) 17%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-gulal) 32%, var(--color-paper)); }
-.vv-header[data-tint="gold"] { background-color: color-mix(in oklab, var(--color-gold) 28%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-gold) 45%, var(--color-paper)); }
-.vv-header[data-tint="peacock"] { background-color: color-mix(in oklab, var(--color-peacock) 19%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-peacock) 34%, var(--color-paper)); }
-.vv-header[data-tint="mor"] { background-color: color-mix(in oklab, var(--color-mor) 19%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-mor) 34%, var(--color-paper)); }
-/* The line between the two header rows follows the tint too. */
-.vv-header[data-tint] > nav { border-color: inherit; }
-/* Inputs inside the tinted bar stay light so they still read as fields. */
-.vv-header[data-tint] form label { background-color: color-mix(in oklab, var(--color-paper) 85%, transparent); }
-@media (prefers-reduced-motion: reduce) { .vv-header { transition: none; } }
+/* Sticky header: only the menu row takes a soft pastel of the section passing under it (header.tsx reads data-tint). Theme tokens, so every theme works. */
+.vv-header, .vv-header > nav { transition: background-color 0.6s ease, border-color 0.6s ease; }
+.vv-header[data-tint="royal"] > nav { background-color: color-mix(in oklab, var(--color-royal) 17%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-royal) 32%, var(--color-paper)); }
+.vv-header[data-tint="gulal"] > nav { background-color: color-mix(in oklab, var(--color-gulal) 17%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-gulal) 32%, var(--color-paper)); }
+.vv-header[data-tint="gold"] > nav { background-color: color-mix(in oklab, var(--color-gold) 28%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-gold) 45%, var(--color-paper)); }
+.vv-header[data-tint="peacock"] > nav { background-color: color-mix(in oklab, var(--color-peacock) 19%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-peacock) 34%, var(--color-paper)); }
+.vv-header[data-tint="mor"] > nav { background-color: color-mix(in oklab, var(--color-mor) 19%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-mor) 34%, var(--color-paper)); }
+.vv-header[data-tint="royal"] { border-bottom-color: color-mix(in oklab, var(--color-royal) 32%, var(--color-paper)); }
+.vv-header[data-tint="gulal"] { border-bottom-color: color-mix(in oklab, var(--color-gulal) 32%, var(--color-paper)); }
+.vv-header[data-tint="gold"] { border-bottom-color: color-mix(in oklab, var(--color-gold) 45%, var(--color-paper)); }
+.vv-header[data-tint="peacock"] { border-bottom-color: color-mix(in oklab, var(--color-peacock) 34%, var(--color-paper)); }
+.vv-header[data-tint="mor"] { border-bottom-color: color-mix(in oklab, var(--color-mor) 34%, var(--color-paper)); }
+@media (prefers-reduced-motion: reduce) { .vv-header, .vv-header > nav { transition: none; } }
+
+/*
+ * Hover: main items light up and grow a touch (owner request). Menu items, footer links, pills/chips/tabs,
+ * buttons and icon buttons. Transform only, so nothing around them moves.
+ */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .vv-header nav a, .vv-header nav button,
+  footer a,
+  main a.rounded-full, main button.rounded-full,
+  .vv-header a.rounded-full, .vv-header button.rounded-full {
+    transition: transform 0.2s cubic-bezier(.2,.8,.2,1), color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+  }
+  .vv-header nav a:hover, .vv-header nav button:hover { transform: scale(1.07); color: var(--color-ink); }
+  .vv-header nav .shadow-float a { transform-origin: left center; }
+  /* "Bolder" on hover without changing text width (a real font-weight change would shift the menu). */
+  .vv-header nav a:hover, .vv-header nav button:hover, footer a:hover,
+  main a.rounded-full:hover, main button.rounded-full:hover:not(:disabled), main article:hover h3 a {
+    -webkit-text-stroke: 0.45px currentColor;
+    paint-order: stroke fill;
+  }
+  footer a:hover { transform: translateX(3px) scale(1.04); }
+  main a.rounded-full:hover, main button.rounded-full:hover:not(:disabled),
+  .vv-header a.rounded-full:hover, .vv-header button.rounded-full:hover { transform: scale(1.05); }
+  main article h3 a { display: inline-block; transition: transform 0.2s cubic-bezier(.2,.8,.2,1), color 0.2s ease; transform-origin: left center; }
+  main article:hover h3 a { transform: scale(1.03); color: var(--color-ink); }
+}

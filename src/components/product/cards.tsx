@@ -34,7 +34,7 @@ export function ProductCard({ p, priority }: { p: CardProduct; priority?: boolea
       <div className="flex flex-1 flex-col pt-3">
         <p className="text-sm text-ink-soft">{p.kind === "bundle" ? p.bundleGroup : p.categoryName}</p>
         <h3 className="mt-1 font-sans text-[1.0625rem] leading-snug font-bold">
-          <Link href={`/p/${p.slug}`} className="hover:text-royal">
+          <Link href={`/p/${p.slug}`} className="hover:text-ink">
             {p.name}
           </Link>
         </h3>
@@ -58,7 +58,7 @@ export function BoxCard({ p, priority }: { p: CardProduct; priority?: boolean })
       </Link>
       <div className="pt-4">
         <h3 className="font-display text-[length:var(--text-title)]">
-          <Link href={`/p/${p.slug}`} className="hover:text-royal">
+          <Link href={`/p/${p.slug}`} className="hover:text-ink">
             {p.name.replace(/ Bhakti Box$/, "")}
           </Link>
         </h3>

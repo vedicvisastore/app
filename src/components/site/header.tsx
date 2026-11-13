@@ -97,7 +97,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
     { href: "/contact", label: copy.contact },
     { href: "/shipping", label: copy.shipping },
   ];
-  const navLink = (active: boolean) => cn("flex items-center gap-2 py-3 text-[0.95rem] whitespace-nowrap transition-colors hover:text-royal", active ? "font-bold text-ink" : "text-ink-soft");
+  const navLink = (active: boolean) => cn("flex items-center gap-2 py-3 text-[0.95rem] whitespace-nowrap transition-colors hover:text-ink", active ? "font-bold text-ink" : "text-ink-soft");
   const isActive = (href: string) => pathname === href.split("?")[0];
 
   const submitSearch = (e: React.FormEvent) => {
@@ -199,7 +199,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
                     <ul className="space-y-1">
                       {sets.map((s) => (
                         <li key={s.href}>
-                          <Link href={s.href} className="font-display block py-1 text-xl text-ink hover:text-royal">
+                          <Link href={s.href} className="font-display block py-1 text-xl text-ink hover:text-ink">
                             {s.label}
                           </Link>
                         </li>
@@ -214,7 +214,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
                     <ul className={cn("gap-x-6", cats.length > 9 ? "columns-2" : "")}>
                       {cats.map((c) => (
                         <li key={c.slug}>
-                          <Link href={`/shop?category=${c.slug}`} className="block py-1 text-[0.95rem] text-ink-soft hover:text-royal">
+                          <Link href={`/shop?category=${c.slug}`} className="block py-1 text-[0.95rem] text-ink-soft hover:text-ink">
                             {c.name}
                           </Link>
                         </li>
@@ -234,7 +234,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
                 <ul className="space-y-1">
                   {kits.map((s) => (
                     <li key={s.href}>
-                      <Link href={s.href} className="font-display block py-1 text-xl whitespace-nowrap text-ink hover:text-royal">
+                      <Link href={s.href} className="font-display block py-1 text-xl whitespace-nowrap text-ink hover:text-ink">
                         {s.label}
                       </Link>
                     </li>
@@ -260,7 +260,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
                 <ul className="space-y-0.5">
                   {help.map((h) => (
                     <li key={h.href}>
-                      <Link href={h.href} className="block rounded-lg px-2 py-1.5 text-[0.95rem] whitespace-nowrap text-ink-soft hover:bg-sky/60 hover:text-royal">
+                      <Link href={h.href} className="block rounded-lg px-2 py-1.5 text-[0.95rem] whitespace-nowrap text-ink-soft hover:bg-sky/60 hover:text-ink">
                         {h.label}
                       </Link>
                     </li>
@@ -414,7 +414,7 @@ function Dropdown({ label, active, pathname, wide, alignRight, children }: { lab
   return (
     <div ref={ref} className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
       <button
-        className={cn("flex items-center gap-1 py-3 text-[0.95rem] whitespace-nowrap transition-colors hover:text-royal", active ? "font-bold text-ink" : "text-ink-soft")}
+        className={cn("flex items-center gap-1 py-3 text-[0.95rem] whitespace-nowrap transition-colors hover:text-ink", active ? "font-bold text-ink" : "text-ink-soft")}
         aria-expanded={open}
         aria-haspopup="true"
         onClick={() => setOpen((o) => !o)}
