@@ -11,7 +11,8 @@ import "./ornaments.css";
 type P = { className?: string };
 
 /** Marigold-and-mango-leaf garland (bandhanwar) that hangs from the top edge of a band. Repeats to any width. */
-export function Toran({ id, className }: P & { id: string }) {
+export function Toran({ id, className, variant = "marigold" }: P & { id: string; variant?: "marigold" | "bells" }) {
+  if (variant === "bells") return <BellToran id={id} className={className} />;
   return (
     <svg className={cn("vv-toran pointer-events-none block h-7 w-full", className)} aria-hidden focusable="false">
       <defs>
@@ -105,5 +106,38 @@ export function PetalShower({ count = 18 }: { count?: number }) {
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Sister garland for the dark title bands: mango leaves with small brass bells and a single marigold between them.
+ * Same family as the marigold toran, different rhythm, so bands and custom pages don't look copy-pasted.
+ */
+function BellToran({ id, className }: P & { id: string }) {
+  return (
+    <svg className={cn("vv-toran pointer-events-none block h-9 w-full", className)} aria-hidden focusable="false">
+      <defs>
+        <pattern id={id} width="84" height="36" patternUnits="userSpaceOnUse">
+          <path d="M0 2 Q21 12 42 2 T84 2" fill="none" stroke="var(--color-gold)" strokeWidth="1" opacity="0.6" />
+          {/* two mango leaves */}
+          <path d="M14 6 q-4 8 0 17 q4 -9 0 -17z" fill="color-mix(in oklab, var(--color-mor) 85%, white)" />
+          <path d="M28 6 q-4 8 0 17 q4 -9 0 -17z" fill="color-mix(in oklab, var(--color-mor) 85%, white)" />
+          {/* brass bell */}
+          <path d="M21 7 v6" stroke="var(--color-gold)" strokeWidth="0.8" />
+          <path d="M16.5 22 q0 -9 4.5 -9 q4.5 0 4.5 9 z" fill="var(--color-gold)" />
+          <path d="M16 22 h10" stroke="var(--color-gold-deep)" strokeWidth="1.2" strokeLinecap="round" />
+          <circle cx="21" cy="24.5" r="1.4" fill="var(--color-gold-deep)" />
+          {/* marigold between pairs */}
+          <g transform="translate(63 10)">
+            <circle r="4.5" fill="color-mix(in oklab, var(--color-gulal) 70%, white)" />
+            <circle r="4.5" fill="none" stroke="var(--color-gulal)" strokeWidth="0.9" strokeDasharray="1.8 1.2" />
+            <circle r="1.6" fill="var(--color-gold)" />
+          </g>
+          <path d="M63 15 v6" stroke="var(--color-gold)" strokeWidth="0.7" opacity="0.7" />
+          <circle cx="63" cy="22.5" r="1.3" fill="var(--color-gold)" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill={`url(#${id})`} />
+    </svg>
   );
 }

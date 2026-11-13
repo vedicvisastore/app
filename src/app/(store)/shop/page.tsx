@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { api } from "@/server/caller";
 import { getSite } from "@/server/site-config";
 import { SortSelect } from "./sort-select";
-import { PeacockFeather, Rangoli } from "@/components/site/ornaments";
+import { PeacockFeather, Rangoli, Toran } from "@/components/site/ornaments";
 
 export const metadata: Metadata = { title: "Shop" };
 
@@ -50,8 +50,9 @@ export default async function Shop({ searchParams }: { searchParams: SP }) {
   return (
     <>
       <div className="on-dark relative overflow-hidden">
+        <Toran id="toran-shop" variant="bells" className="absolute inset-x-0 top-0" />
         <Rangoli spin className="absolute -top-28 -right-28 size-72 text-gold opacity-[0.12] sm:size-96" />
-        <Container className="relative grid items-end gap-6 py-16 lg:grid-cols-12 lg:py-20">
+        <Container className="relative grid items-end gap-6 pt-20 pb-16 lg:grid-cols-12 lg:pt-24 lg:pb-20">
           <div className="lg:col-span-7">
             <h1 className="vv-rise text-[length:var(--text-display-s)] text-on-shyam">{title}</h1>
           </div>
