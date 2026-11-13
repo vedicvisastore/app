@@ -1,0 +1,26 @@
+node_modules
+.next
+.env
+.env.local
+.pglite
+public/uploads
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+.open-next
+.wrangler
+.dev.vars
+
+# Agent context (local only)
+AI_CONTEXT.md
+CLAUDE.md
+.hallmark
+.next-check
+AGENT_LOG.md
+.agents/
+.codex/
+.aws/
+.env.production
+
+# Business data with cost prices: keep out of the repo
+data/VedicvisaStore.xlsx

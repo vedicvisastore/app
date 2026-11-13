@@ -1,0 +1,132 @@
+/* VedicVisa brand tokens. Colours come from the logo and the box art:
+ * Shyam (Krishna's blue) as the field, Yamuna mist as paper, the bansuri's gold as the one signal,
+ * gulal pink from the tagline as the sale seal, peacock green for success. */
+@theme static {
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5625rem;
+  --text-2xl: 1.953rem;
+  --text-3xl: 2.441rem;
+  --text-display-s: clamp(2.25rem, 4vw + 0.5rem, 3.75rem);
+  --text-display: clamp(2.75rem, 5vw + 1rem, 5.5rem);
+  --text-section: clamp(2.125rem, 2.5vw + 1rem, 3.5rem);
+  --text-title: clamp(1.25rem, 0.75vw + 0.875rem, 1.625rem);
+  --text-lead: clamp(1.125rem, 0.35vw + 1rem, 1.375rem);
+  --text-deva: clamp(5rem, 14vw, 13rem);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Hallmark roles */
+  --color-paper: oklch(97.6% 0.008 236);
+  --color-paper-2: oklch(94.6% 0.018 232);
+  --color-paper-3: oklch(90.5% 0.03 232);
+  --color-ink: oklch(22% 0.075 268);
+  --color-ink-2: oklch(38% 0.06 266);
+  --color-muted: oklch(50% 0.045 262);
+  --color-rule: oklch(88.5% 0.022 240);
+  --color-accent: oklch(80% 0.145 80);
+  --color-accent-ink: oklch(22% 0.075 268);
+  --color-focus: oklch(46% 0.2 266);
+  --color-error: oklch(50% 0.19 27);
+  --color-success: oklch(48% 0.11 168);
+
+  /* Brand roles */
+  --color-shyam: oklch(23% 0.085 268);
+  --color-shyam-2: oklch(29% 0.095 268);
+  --color-shyam-3: oklch(36% 0.1 268);
+  --color-on-shyam: oklch(95.5% 0.018 85);
+  --color-on-shyam-2: oklch(82% 0.035 255);
+  --color-shyam-word: oklch(56% 0.13 268);
+  --color-gold: oklch(80% 0.145 80);
+  --color-gold-ink: oklch(50% 0.11 72);
+  --color-gold-soft: oklch(95% 0.04 88);
+  --color-gulal: oklch(53% 0.21 355);
+  --color-gulal-soft: oklch(95% 0.03 355);
+  --color-mor: oklch(48% 0.11 168);
+  --color-mor-soft: oklch(95% 0.03 168);
+  --color-royal: oklch(46% 0.2 266);
+  --color-royal-deep: oklch(38% 0.18 266);
+  --color-field-edge: oklch(62% 0.04 255);
+  --color-peacock: oklch(52% 0.115 205);
+  --color-peacock-deep: oklch(46% 0.11 205);
+  --color-gold-deep: oklch(74% 0.15 76);
+  --color-gulal-deep: oklch(48% 0.2 355);
+  --color-mor-deep: oklch(43% 0.1 168);
+  --color-white: oklch(99% 0.004 236);
+  /* Order map scale: light to deep violet */
+  --color-heat-0: oklch(91% 0.018 250);
+  --color-heat-1: oklch(90% 0.05 300);
+  --color-heat-2: oklch(78% 0.1 300);
+  --color-heat-3: oklch(64% 0.15 298);
+  --color-heat-4: oklch(50% 0.18 295);
+  --color-heat-5: oklch(36% 0.17 292);
+  /* Platform brand marks, used only on their own logos */
+  --color-ig-1: oklch(87% 0.15 88);
+  --color-ig-2: oklch(60% 0.24 15);
+  --color-ig-3: oklch(48% 0.24 300);
+  --color-yt: oklch(60% 0.25 29);
+  --color-black: oklch(16% 0.04 268);
+
+  /* Names the components already use, now pointing at the brand roles */
+  --color-sky: var(--color-paper-2);
+  --color-sky-deep: var(--color-paper-3);
+  --color-line: var(--color-rule);
+  --color-line-strong: oklch(80% 0.03 245);
+  --color-ink-soft: var(--color-ink-2);
+  --color-ink-mute: var(--color-muted);
+  --color-haldi: var(--color-gold);
+  --color-haldi-soft: var(--color-gold-soft);
+  --color-haldi-ink: var(--color-gold-ink);
+  --color-yamuna: oklch(48% 0.1 222);
+  --color-yamuna-soft: oklch(95% 0.025 222);
+  --color-mor-ink: var(--color-mor);
+
+  --font-display: var(--font-rozha), "Rozha One", Georgia, serif;
+  --font-body: "Satoshi", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-body);
+  --font-deva: var(--font-rozha), "Rozha One", "Noto Serif Devanagari", serif;
+  --font-outlier: var(--font-deva);
+  --radius-card: 14px;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px oklch(20% 0.05 268 / 0.06);
+  --shadow-lift: 0 1px 2px oklch(20% 0.05 268 / 0.06), 0 10px 24px -14px oklch(20% 0.05 268 / 0.25);
+  --shadow-float: 0 2px 6px oklch(20% 0.05 268 / 0.08), 0 24px 48px -20px oklch(20% 0.05 268 / 0.35);
+  --tracking-display: -0.01em;
+}
+
+:root {
+  --space-3xs: 2px;
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+  --space-4xl: 144px;
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+  --container: 1440px;
+  --gutter: 64px;
+  --gap-columns: 32px;
+  --section-gap-s: 120px;
+  --section-gap: 144px;
+  --section-gap-l: 176px;
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-sticky-nav: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+  --rule-hair: 1px;
+  --display-weight: 400;
+}
+@media (max-width: 60rem) { :root { --gutter: 24px; --section-gap-s: 80px; --section-gap: 96px; --section-gap-l: 120px; } }
+@media (max-width: 40rem) { :root { --gutter: 16px; --section-gap-s: 56px; --section-gap: 72px; --section-gap-l: 96px; --gap-columns: 16px; } }

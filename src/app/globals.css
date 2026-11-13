@@ -1,0 +1,85 @@
+/* Hallmark · shape: Catalogue, offer-led · genre: editorial · theme: brand · redesign: full · job: buy
+ * paper: oklch(97.6% 0.008 236) · accent: oklch(80% 0.145 80) · display: Rozha One (Latin and Devanagari) · body: Satoshi · hero: Counter · nav: edge-aligned, logo with three shop links and the cart at the far edge · footer: mast, the round seal over the links · signature: Devanagari set as the picture on Shyam blue, beside the real box
+ * axes: light/high-contrast-serif/warm · posture: Committed (Shyam field carries the hero, the shloka band and the footer) · contrast: pass · fold: pass · imagery: user's own box photo and temple painting, no library photos · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S5 R4 V4 · weakest: P, a store page argues little; the box's worth set against its price is the argument, shown in the hero and the contents index */
+/* Hallmark · waive 49b · product names such as Krishna Priya Bhakti Box wrap to two lines at 320px · a real product name cannot shorten and never passes two lines */
+/* Hallmark · waive 77 · the shop's Shyam banner holds the title and one line above the product grid · a single band on the shop route, the grid below it is the mass */
+/* Hallmark · dismissed kept · {`/p/${s.slug}`} and {`/p/${spotlight.slug}`} are the same box links under renamed variables, and the Instagram link still renders whenever a handle is set in Settings */
+/* Hallmark · waive 47c · the product tiles are type on paper with one gold arch hairline · products have no photos yet and an arch is the brand's own geometry */
+@import "tailwindcss";
+@import "./tokens.css";
+@import "./base.css" layer(base);
+
+/* The hanging starts at the navbar seam and stays entirely in the hero's left gutter. */
+.festive-hanging {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 2px;
+  width: clamp(52px, calc((100vw - var(--container)) / 2 + var(--gutter) - 12px), 170px);
+  aspect-ratio: 170 / 470;
+  pointer-events: none;
+  contain: layout paint;
+}
+.festive-hanging canvas, .festive-hanging-fallback { position: absolute; inset: 0; width: 100%; height: 100%; }
+.festive-hanging[data-ready="true"] .festive-hanging-fallback { visibility: hidden; }
+@media (min-width: 1024px) { .festive-hanging { display: block; } }
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { background: var(--color-paper); color: var(--color-ink); font-family: var(--font-body); }
+  h1, h2, h3, .font-display { font-family: var(--font-display); font-weight: var(--display-weight); letter-spacing: var(--tracking-display); }
+  .deva { font-family: var(--font-deva); font-weight: 400; letter-spacing: 0; line-height: 1.15; }
+  ::selection { background: var(--color-gold-soft); color: var(--color-ink); }
+  :focus-visible { outline: 2.5px solid var(--color-focus); outline-offset: 2px; border-radius: 6px; }
+  .on-dark { --color-focus: var(--color-gold); color: var(--color-on-shyam); background: var(--color-shyam); }
+}
+
+/* Signature motif: the mandir doorway (pointed arch) */
+.arch {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 125' preserveAspectRatio='none'%3E%3Cpath d='M0 125V46C0 24 22 12 38 6C44 4 48 2 50 0C52 2 56 4 62 6C78 12 100 24 100 46V125Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 125' preserveAspectRatio='none'%3E%3Cpath d='M0 125V46C0 24 22 12 38 6C44 4 48 2 50 0C52 2 56 4 62 6C78 12 100 24 100 46V125Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+.arch-frame { position: relative; }
+.arch-frame::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--space-sm) * -1);
+  background: var(--color-gold);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 125' preserveAspectRatio='none'%3E%3Cpath d='M1 125V46C1 24.5 22.5 12.8 38.3 6.9C44.2 4.9 48.1 2.9 50 1.2C51.9 2.9 55.8 4.9 61.7 6.9C77.5 12.8 99 24.5 99 46V125' fill='none' stroke='black' stroke-width='.7' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 125' preserveAspectRatio='none'%3E%3Cpath d='M1 125V46C1 24.5 22.5 12.8 38.3 6.9C44.2 4.9 48.1 2.9 50 1.2C51.9 2.9 55.8 4.9 61.7 6.9C77.5 12.8 99 24.5 99 46V125' fill='none' stroke='black' stroke-width='.7' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+/* The one orchestrated moment: the doorway opens on first load (visible by default) */
+@keyframes arch-open { from { opacity: 0.2; transform: translateY(16px) scale(1.02); } to { opacity: 1; transform: none; } }
+.anim-arch { animation: arch-open 0.8s var(--ease-out) both; }
+
+/* Announcement ticker: pauses on hover and focus, stops under reduced motion */
+.marquee { display: flex; width: max-content; animation: marquee 38s linear infinite; }
+.marquee-wrap:hover .marquee, .marquee-wrap:focus-within .marquee { animation-play-state: paused; }
+@keyframes marquee { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .marquee { animation: none; } }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@layer components {
+  .field {
+    width: 100%;
+    min-height: 48px;
+    border: 1.5px solid var(--color-field-edge);
+    background: var(--color-paper);
+    border-radius: 12px;
+    padding: var(--space-sm) var(--space-md);
+    font-size: 1rem;
+    color: var(--color-ink);
+    transition: box-shadow var(--dur-short) var(--ease-out);
+  }
+  .field:focus { outline: 2.5px solid var(--color-focus); outline-offset: -1px; }
+  .field::placeholder { color: var(--color-muted); }
+  .field[aria-invalid="true"] { border-color: var(--color-error); }
+  .field:disabled { opacity: 0.55; cursor: not-allowed; }
+  select.field { padding-right: var(--space-xl); }
+  .label { display: block; font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-2); margin-bottom: var(--space-2xs); }
+}

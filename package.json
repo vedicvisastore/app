@@ -1,0 +1,61 @@
+{
+  "name": "vedicvisaapp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "DB_POOL_MAX=1 pglite-server --db=${PGLITE_DIR:-$HOME/.vedicvisa/pglite} --port=54329 --include-database-url --run \"next dev\"",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:setup": "npm run db:migrate && npm run db:seed && npm run db:pincodes",
+    "api": "tsx scripts/server.ts",
+    "dev:neon": "next dev",
+    "cf:build": "ADMIN_HOST=${ADMIN_HOST:-admin.vedicvisa.com} NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://vedicvisa.com} opennextjs-cloudflare build",
+    "cf:preview": "npm run cf:build && opennextjs-cloudflare preview",
+    "cf:deploy": "npm run cf:build && opennextjs-cloudflare deploy",
+    "db:pincodes": "tsx scripts/load-pincodes.ts",
+    "demo:orders": "tsx scripts/demo-orders.ts",
+    "build:check": "NEXT_DIST_DIR=.next-check next build"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.13",
+    "@tanstack/react-query": "5.105.0",
+    "@trpc/client": "11.22.1",
+    "@trpc/server": "11.22.1",
+    "@trpc/tanstack-react-query": "11.22.1",
+    "aws4fetch": "1.0.20",
+    "cannon-es": "^0.20.0",
+    "drizzle-orm": "0.45.4",
+    "exceljs": "4.4.0",
+    "lucide-react": "1.64.0",
+    "next": "16.4.3",
+    "postgres": "3.4.7",
+    "react": "19.2.9",
+    "react-dom": "19.2.9",
+    "server-only": "0.0.1",
+    "superjson": "2.2.6",
+    "three": "^0.187.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite-socket": "0.2.16",
+    "@opennextjs/cloudflare": "1.20.14",
+    "@tailwindcss/postcss": "4.1.16",
+    "@types/node": "22.18.0",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@types/three": "^0.187.0",
+    "dotenv": "17.2.3",
+    "drizzle-kit": "0.31.11",
+    "tailwindcss": "4.1.16",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "wrangler": "4.155.0"
+  },
+  "overrides": {
+    "zod": "4.6.7"
+  }
+}
