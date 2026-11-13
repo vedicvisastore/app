@@ -20,13 +20,23 @@ import { verifyWebhookSignature } from "./razorpay";
 import { appRouter } from "./root";
 import { ALLOWED_MEDIA, mediaKey } from "./storage";
 import { createContext } from "./trpc";
+import { hit, LIMITS } from "./rate-limit";
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
 
+export function clientIp(req: Request) {
+  return req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+}
+
 export async function handleApi(req: Request, db: DB): Promise<Response> {
   const url = new URL(req.url);
   const path = url.pathname;
+
+  // Coarse per-IP flood guard for the whole API (in memory: costs nothing). Webhooks are exempt.
+  if (!path.startsWith("/api/webhooks/") && !(await hit(LIMITS.apiIp, clientIp(req))).ok) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), { status: 429, headers: { "Content-Type": "application/json", "Retry-After": "30" } });
+  }
 
   if (req.method !== "GET" && req.method !== "HEAD" && !path.startsWith("/api/webhooks/")) {
     const origin = req.headers.get("origin");
@@ -46,7 +56,7 @@ export async function handleApi(req: Request, db: DB): Promise<Response> {
       req,
       router: appRouter,
       createContext: ({ resHeaders }) =>
-        createContext(db, req.headers.get("cookie"), (c) => resHeaders.append("Set-Cookie", c)),
+        createContext(db, req.headers.get("cookie"), (c) => resHeaders.append("Set-Cookie", c), clientIp(req)),
       onError: ({ error, path: p }) => {
         if (error.code === "INTERNAL_SERVER_ERROR") console.error(`tRPC ${p}:`, error);
       },

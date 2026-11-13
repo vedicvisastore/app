@@ -33,5 +33,7 @@ export async function cached<T>(key: string, ttlMs: number, load: () => Promise<
 
 export function clearCache() {
   shared.generation++;
+  // Also drop the shared catalogue copy in Redis (fire and forget; it expires in 60s anyway).
+  void import("./redis").then((r) => r.redisDel("cache:store-products:v1")).catch(() => {});
   store.clear();
 }

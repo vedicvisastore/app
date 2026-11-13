@@ -88,5 +88,10 @@ When to pay: Workers Paid ($5/month) when daily requests near 100k or before a b
 - Runtime keys (Razorpay, Resend, Google, R2, AUTH_SECRET…) live in Cloudflare as Worker secrets, not in GitHub: `npx wrangler secret bulk .env.production`.
 - The deploy job uses the GitHub environment `production`; add yourself as a required reviewer there if you want to approve each deploy.
 
+## Rate limits and DDoS
+- Built in: per-IP flood guard on the whole API (in memory), and Redis-backed limits on login codes, code checks, coupon tries and checkout (`src/server/rate-limit.ts`). Over the limit → HTTP 429 / a friendly message.
+- Cloudflare's automatic DDoS protection covers the Worker on every plan, free included.
+- Once vedicvisa.com is on Cloudflare: Security → Bots → **Bot Fight Mode on**; Security → WAF → Rate limiting rule (free plan: 1 rule) on `/api/trpc/auth.requestOtp` (e.g. 20 requests / 10 s per IP → block); Security → Settings → Security level "Medium". Under attack: switch on **Under Attack Mode** from the dashboard overview.
+
 ## Rollback
 `npx wrangler deployments list` then `npx wrangler rollback <id>`. Database changes are forward-only migrations; take a Neon branch snapshot before running `db:migrate` on production.

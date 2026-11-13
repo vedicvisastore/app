@@ -5,6 +5,7 @@ import { addresses, orderEvents, orderItems, orders, users } from "@/db/schema";
 import { clearSessionCookie, createSession, destroySession, requestOtp, sessionCookie, verifyOtp } from "../auth";
 import { filterProducts, listStoreProducts, productDetail, storeCategories } from "../catalog";
 import { env } from "../env";
+import { enforce, LIMITS } from "../rate-limit";
 import { googleConfigured } from "../google";
 import { createPendingOrder, expireStaleOrders, markOrderPaid } from "../orders";
 import { quoteCart } from "../pricing";
@@ -35,12 +36,14 @@ export const authRouter = router({
     ctx.user ? { id: ctx.user.id, email: ctx.user.email, name: ctx.user.name, phone: ctx.user.phone, role: ctx.user.role } : null,
   ),
   requestOtp: publicProcedure.input(z.object({ email: z.email("Enter a valid email") })).mutation(async ({ ctx, input }) => {
+    await enforce(LIMITS.otpRequestIp, ctx.ip, "Too many login codes from this network. Please wait 10 minutes.");
     await requestOtp(ctx.db, input.email);
     return { sent: true, devHint: !env.isProd };
   }),
   verifyOtp: publicProcedure
     .input(z.object({ email: z.email(), code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code") }))
     .mutation(async ({ ctx, input }) => {
+      await enforce(LIMITS.otpVerifyIp, ctx.ip, "Too many attempts. Please wait 10 minutes.");
       const user = await verifyOtp(ctx.db, input.email, input.code);
       const s = await createSession(ctx.db, user.id);
       ctx.setCookie(sessionCookie(s.token, s.expiresAt));
@@ -98,11 +101,17 @@ export const catalogRouter = router({
 export const cartRouter = router({
   quote: publicProcedure
     .input(z.object({ lines: linesSchema, couponCode: z.string().max(40).optional().nullable() }))
-    .query(({ ctx, input }) => quoteCart(ctx.db, { ...input, userId: ctx.user?.id })),
+    .query(async ({ ctx, input }) => {
+      await enforce(LIMITS.quoteIp, ctx.ip);
+      // Coupon guessing is limited across all servers.
+      if (input.couponCode) await enforce(LIMITS.couponIp, ctx.ip, "Too many coupon tries. Please wait a few minutes.");
+      return quoteCart(ctx.db, { ...input, userId: ctx.user?.id });
+    }),
 });
 
 export const pincodeRouter = router({
-  lookup: publicProcedure.input(z.object({ pincode: z.string().regex(/^[1-9]\d{5}$/) })).query(async ({ input }) => {
+  lookup: publicProcedure.input(z.object({ pincode: z.string().regex(/^[1-9]\d{5}$/) })).query(async ({ ctx, input }) => {
+    await enforce(LIMITS.pincodeIp, ctx.ip);
     try {
       const res = await fetch(`https://api.postalpincode.in/pincode/${input.pincode}`, { signal: AbortSignal.timeout(4000) });
       const data = (await res.json()) as { Status: string; PostOffice: { District: string; State: string; Name: string; DeliveryStatus: string }[] | null }[];
@@ -175,6 +184,7 @@ export const checkoutRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await enforce(LIMITS.checkoutUser, `u${ctx.user.id}`, "Too many checkout attempts. Please wait a few minutes.");
       await expireStaleOrders(ctx.db).catch(() => {});
       const quote = await quoteCart(ctx.db, { lines: input.lines, couponCode: input.couponCode, userId: ctx.user.id });
       if (!quote.lines.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Your cart is empty." });

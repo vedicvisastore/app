@@ -1,5 +1,8 @@
 import { discountState } from "@/lib/discount-status";
 import { cached } from "./cache";
+import { redisGetJson, redisSetJson } from "./redis";
+
+export const CATALOG_REDIS_KEY = "cache:store-products:v1";
 import { and, desc, eq, gt, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
 import type { DB } from "@/db/connect";
 import { bundleItems, categories, discounts, orderItems, orders, products, type Discount, type Product } from "@/db/schema";
@@ -112,8 +115,15 @@ async function scores(db: DB) {
   return new Map(rows.map((r) => [r.productId!, r.score]));
 }
 
+/** Busiest read on the site: memory (20s) → Redis (60s, shared by every server) → database. */
 export function listStoreProducts(db: DB): Promise<CardProduct[]> {
-  return cached("store-products", 20_000, () => loadStoreProducts(db));
+  return cached("store-products", 20_000, async () => {
+    const hit = await redisGetJson<CardProduct[]>(CATALOG_REDIS_KEY);
+    if (hit) return hit.map((p) => ({ ...p, createdAt: new Date(p.createdAt), launchAt: p.launchAt ? new Date(p.launchAt) : null }));
+    const fresh = await loadStoreProducts(db);
+    await redisSetJson(CATALOG_REDIS_KEY, fresh, 60);
+    return fresh;
+  });
 }
 
 async function loadStoreProducts(db: DB): Promise<CardProduct[]> {

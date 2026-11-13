@@ -10,15 +10,17 @@ export type Context = {
   db: DB;
   user: User | null;
   sessionToken: string | null;
+  /** Client IP (Cloudflare's CF-Connecting-IP), used for rate limits. */
+  ip: string;
   /** Adds a Set-Cookie header to the response (no-op for server-side callers). */
   setCookie: (cookie: string) => void;
 };
 
 /** Adapter-agnostic: works for the fetch adapter (Next / Workers) and the standalone Node server. */
-export async function createContext(db: DB, cookieHeader: string | null, setCookie: (c: string) => void): Promise<Context> {
+export async function createContext(db: DB, cookieHeader: string | null, setCookie: (c: string) => void, ip = "unknown"): Promise<Context> {
   const token = parseCookies(cookieHeader)[SESSION_COOKIE] ?? null;
   const user = await userFromSessionToken(db, token);
-  return { db, user, sessionToken: token, setCookie };
+  return { db, user, sessionToken: token, setCookie, ip };
 }
 
 const t = initTRPC.context<Context>().create({
