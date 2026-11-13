@@ -18,7 +18,8 @@
     "cf:deploy": "npm run cf:build && opennextjs-cloudflare deploy",
     "db:pincodes": "tsx scripts/load-pincodes.ts",
     "demo:orders": "tsx scripts/demo-orders.ts",
-    "build:check": "NEXT_DIST_DIR=.next-check next build"
+    "build:check": "NEXT_DIST_DIR=.next-check next build",
+    "env:edit": "node scripts/env-editor.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.13",
