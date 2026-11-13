@@ -1,0 +1,22 @@
+/* Login page motion. Everything is decorative and stops for reduced motion. */
+.login-word { animation: login-rise 0.8s cubic-bezier(.2,.8,.2,1) both, login-breathe 6s ease-in-out 0.8s infinite; }
+@keyframes login-breathe { 50% { transform: translateY(-4px); } }
+
+.login-petal { position: absolute; top: -2rem; animation-name: login-fall; animation-timing-function: linear; animation-iteration-count: infinite; }
+@keyframes login-fall {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  8% { opacity: 1; }
+  25% { transform: translate(28px, 25vh) rotate(90deg); }
+  50% { transform: translate(-18px, 50vh) rotate(200deg); }
+  75% { transform: translate(24px, 75vh) rotate(290deg); }
+  92% { opacity: 1; }
+  100% { transform: translate(-10px, 105vh) rotate(380deg); opacity: 0; }
+}
+
+.login-card { animation: login-rise 0.8s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes login-rise { from { opacity: 0; transform: translateY(24px) scale(0.98); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .login-word, .login-petal, .login-card { animation: none; }
+  .login-petal { display: none; }
+}
