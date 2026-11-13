@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { PetalShower } from "@/components/site/ornaments";
 import { Check, ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -30,6 +31,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
 
   return (
     <Container className="max-w-4xl pt-10">
+      {placed && o.status !== "pending_payment" && <PetalShower />}
       {placed && o.status !== "pending_payment" && (
         <div className="mb-10 overflow-hidden rounded-3xl bg-gradient-to-br from-sky to-mor-soft p-8 text-center">
           <div className="mx-auto grid size-14 place-items-center rounded-full bg-mor text-white">

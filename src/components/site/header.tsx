@@ -30,33 +30,25 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
   const pathname = usePathname();
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState(false);
-  const [shopOpen, setShopOpen] = useState(false);
   const [q, setQ] = useState("");
   const [bump, setBump] = useState(false);
-  const shopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMenu(false);
-    setShopOpen(false);
     setSearch(false);
   }, [pathname]);
   useEffect(() => {
     if (!cart.count) return;
     setBump(true);
-    const t = setTimeout(() => setBump(false), 350);
+    const t = setTimeout(() => setBump(false), 700);
     return () => clearTimeout(t);
   }, [cart.count]);
   useEffect(() => {
-    if (!shopOpen && !menu) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && (setShopOpen(false), setMenu(false));
-    const onClick = (e: MouseEvent) => shopRef.current && !shopRef.current.contains(e.target as Node) && setShopOpen(false);
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
     window.addEventListener("keydown", onKey);
-    window.addEventListener("click", onClick);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("click", onClick);
-    };
-  }, [shopOpen, menu]);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menu]);
   useEffect(() => {
     document.body.style.overflow = menu ? "hidden" : "";
     return () => void (document.body.style.overflow = "");
@@ -72,8 +64,15 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
     { href: "/new", label: copy.newLaunches },
     { href: "/deals", label: copy.deals, dot: "bg-gulal" },
     ...festivals.map((f) => ({ href: `/c/${f.slug}`, label: f.name, dot: DOT[f.accent] ?? "bg-gulal" })),
-    { href: "/track", label: copy.track },
   ];
+  const kits = sets.slice(1);
+  const help = [
+    { href: "/track", label: copy.track },
+    { href: signedIn ? "/account" : "/login?next=/account", label: copy.orders },
+    { href: "/contact", label: copy.contact },
+    { href: "/shipping", label: copy.shipping },
+  ];
+  const navLink = (active: boolean) => cn("flex items-center gap-2 py-3 text-[0.95rem] whitespace-nowrap transition-colors hover:text-royal", active ? "font-bold text-ink" : "text-ink-soft");
   const isActive = (href: string) => pathname === href.split("?")[0];
 
   const submitSearch = (e: React.FormEvent) => {
@@ -103,7 +102,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
                       ) : (
                         r.text
                       )}
-                      <svg viewBox="0 0 10 10" className="size-2 fill-gold" aria-hidden>
+                      <svg viewBox="0 0 10 10" className="vv-twinkle size-2 fill-gold" aria-hidden style={{ animationDelay: `${(j % 4) * 0.6}s` }}>
                         <path d="M5 0l1.2 3.8L10 5 6.2 6.2 5 10 3.8 6.2 0 5l3.8-1.2z" />
                       </svg>
                     </span>
@@ -148,6 +147,13 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
             </Link>
             <button onClick={() => cart.setOpen(true)} className={cn(iconBtn, "relative -mr-2")} aria-label={`Cart, ${cart.count} items`}>
               <ShoppingBag className="size-5" />
+              {bump && (
+                <span className="vv-burst pointer-events-none absolute inset-0" aria-hidden>
+                  {[0, 60, 120, 180, 240, 300].map((r, i) => (
+                    <span key={r} style={{ ["--r" as string]: `${r}deg`, background: i % 2 ? "var(--color-gulal)" : "var(--color-gold)" }} />
+                  ))}
+                </span>
+              )}
               {cart.count > 0 && (
                 <span className={cn("absolute -top-0.5 -right-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-gold px-1 text-[11px] font-bold text-shyam transition-transform duration-[var(--dur-short)]", bump && "scale-125")}>
                   {cart.count}
@@ -159,63 +165,84 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
 
         {/* Second row (desktop): the menu */}
         <nav className="hidden border-t border-line lg:block" aria-label="Main">
-          <ul className="wrap flex h-12 items-center justify-center gap-9">
+          <ul className="wrap flex h-12 items-center justify-center gap-6 xl:gap-8">
             <li>
-              <div ref={shopRef} className="relative" onMouseEnter={() => setShopOpen(true)} onMouseLeave={() => setShopOpen(false)}>
-                <button
-                  className={cn("flex items-center gap-1 py-3 text-[0.95rem] transition-colors hover:text-royal", pathname.startsWith("/shop") ? "font-bold text-ink" : "text-ink-soft")}
-                  aria-expanded={shopOpen}
-                  aria-haspopup="true"
-                  onClick={() => setShopOpen((o) => !o)}
-                >
-                  {copy.shop}
-                  <ChevronDown className={cn("size-4 transition-transform duration-[var(--dur-short)]", shopOpen && "rotate-180")} aria-hidden />
-                </button>
-                <div className={cn("absolute top-full left-1/2 w-[38rem] -translate-x-1/2 pt-1 transition duration-[var(--dur-short)]", shopOpen ? "visible opacity-100" : "invisible translate-y-1 opacity-0")}>
-                  <div className="grid grid-cols-[1fr_1.6fr] gap-6 rounded-2xl border border-line bg-paper p-6 shadow-float">
-                    <div>
-                      <p className="text-xs font-bold tracking-[0.08em] uppercase mb-3 text-ink-mute">{copy.byType}</p>
-                      <ul className="space-y-1">
-                        {sets.map((s) => (
-                          <li key={s.href}>
-                            <Link href={s.href} className="font-display block py-1 text-xl text-ink hover:text-royal">
-                              {s.label}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                      <Link href="/shop" className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-royal">
-                        {copy.shopAll} <ChevronRight className="size-4" aria-hidden />
-                      </Link>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold tracking-[0.08em] uppercase mb-3 text-ink-mute">{copy.byCategory}</p>
-                      <ul className={cn("gap-x-6", cats.length > 9 ? "columns-2" : "")}>
-                        {cats.map((c) => (
-                          <li key={c.slug}>
-                            <Link href={`/shop?category=${c.slug}`} className="block py-1 text-[0.95rem] text-ink-soft hover:text-royal">
-                              {c.name}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+              <Dropdown label={copy.shop} active={pathname === "/shop"} pathname={pathname} wide>
+                <div className="grid grid-cols-[1fr_1.6fr] gap-6">
+                  <div>
+                    <p className="mb-3 text-xs font-bold tracking-[0.08em] text-ink-mute uppercase">{copy.byType}</p>
+                    <ul className="space-y-1">
+                      {sets.map((s) => (
+                        <li key={s.href}>
+                          <Link href={s.href} className="font-display block py-1 text-xl text-ink hover:text-royal">
+                            {s.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link href="/shop" className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-royal">
+                      {copy.shopAll} <ChevronRight className="size-4" aria-hidden />
+                    </Link>
+                  </div>
+                  <div>
+                    <p className="mb-3 text-xs font-bold tracking-[0.08em] text-ink-mute uppercase">{copy.byCategory}</p>
+                    <ul className={cn("gap-x-6", cats.length > 9 ? "columns-2" : "")}>
+                      {cats.map((c) => (
+                        <li key={c.slug}>
+                          <Link href={`/shop?category=${c.slug}`} className="block py-1 text-[0.95rem] text-ink-soft hover:text-royal">
+                            {c.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
-              </div>
+              </Dropdown>
+            </li>
+            <li>
+              <Link href={sets[0].href} className={navLink(false)}>
+                {copy.boxes}
+              </Link>
+            </li>
+            <li>
+              <Dropdown label={copy.kits} active={false} pathname={pathname}>
+                <ul className="space-y-1">
+                  {kits.map((s) => (
+                    <li key={s.href}>
+                      <Link href={s.href} className="font-display block py-1 text-xl whitespace-nowrap text-ink hover:text-royal">
+                        {s.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </Dropdown>
             </li>
             {links.map((l) => (
               <li key={l.href}>
-                <Link
-                  href={l.href}
-                  aria-current={isActive(l.href) ? "page" : undefined}
-                  className={cn("flex items-center gap-2 py-3 text-[0.95rem] transition-colors hover:text-royal", isActive(l.href) ? "font-bold text-ink" : "text-ink-soft")}
-                >
+                <Link href={l.href} aria-current={isActive(l.href) ? "page" : undefined} className={navLink(isActive(l.href))}>
                   {"dot" in l && l.dot && <span className={cn("size-1.5 rounded-full", l.dot)} aria-hidden />}
                   {l.label}
                 </Link>
               </li>
             ))}
+            <li>
+              <Link href="/about" aria-current={isActive("/about") ? "page" : undefined} className={navLink(isActive("/about"))}>
+                {copy.about}
+              </Link>
+            </li>
+            <li>
+              <Dropdown label={copy.help} active={["/track", "/contact", "/shipping"].includes(pathname)} pathname={pathname} alignRight>
+                <ul className="space-y-0.5">
+                  {help.map((h) => (
+                    <li key={h.href}>
+                      <Link href={h.href} className="block rounded-lg px-2 py-1.5 text-[0.95rem] whitespace-nowrap text-ink-soft hover:bg-sky/60 hover:text-royal">
+                        {h.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </Dropdown>
+            </li>
           </ul>
         </nav>
 
@@ -285,6 +312,15 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
             </MobileGroup>
           )}
 
+          <MobileGroup title={copy.help}>
+            {help.map((h) => (
+              <MobileLink key={h.href} href={h.href}>
+                {h.label}
+              </MobileLink>
+            ))}
+            <MobileLink href="/about">{copy.about}</MobileLink>
+          </MobileGroup>
+
           {cats.length > 0 && (
             <MobileGroup title={copy.byCategory}>
               <div className="flex flex-wrap gap-2 pt-1">
@@ -331,5 +367,45 @@ function MobileLink({ href, children, big, dot }: { href: string; children: Reac
       {dot && <span className={cn("size-2 rounded-full", dot)} aria-hidden />}
       {children}
     </Link>
+  );
+}
+
+/** Desktop menu item with a panel: opens on hover or click, closes on leave, Escape, outside click or navigation. */
+function Dropdown({ label, active, pathname, wide, alignRight, children }: { label: string; active: boolean; pathname: string; wide?: boolean; alignRight?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onClick = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("click", onClick);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("click", onClick);
+    };
+  }, [open]);
+  return (
+    <div ref={ref} className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button
+        className={cn("flex items-center gap-1 py-3 text-[0.95rem] whitespace-nowrap transition-colors hover:text-royal", active ? "font-bold text-ink" : "text-ink-soft")}
+        aria-expanded={open}
+        aria-haspopup="true"
+        onClick={() => setOpen((o) => !o)}
+      >
+        {label}
+        <ChevronDown className={cn("size-4 transition-transform duration-[var(--dur-short)]", open && "rotate-180")} aria-hidden />
+      </button>
+      <div
+        className={cn(
+          "absolute top-full z-10 pt-1 transition duration-[var(--dur-short)]",
+          wide ? "left-1/2 w-[38rem] -translate-x-1/2" : alignRight ? "right-0 min-w-56" : "left-1/2 min-w-52 -translate-x-1/2",
+          open ? "visible opacity-100" : "invisible translate-y-1 opacity-0",
+        )}
+      >
+        <div className={cn("rounded-2xl border border-line bg-paper shadow-float", wide ? "p-6" : "p-3")}>{children}</div>
+      </div>
+    </div>
   );
 }

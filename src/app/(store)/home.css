@@ -3,7 +3,7 @@
 
 .home-page {
   --home-radius: 22px;
-  --home-hero-height: clamp(500px, calc(100svh - 250px), 600px);
+  --home-hero-height: clamp(420px, calc(100svh - 380px), 520px); /* shorter so bestsellers and offers show at first glance */
   --home-hero-head: clamp(3.2rem, 4.5vw, 4.5rem);
   --home-hero-field: color-mix(in oklab, var(--color-royal) 89%, var(--color-shyam));
   --home-hero-arch: color-mix(in oklab, var(--color-royal) 55%, var(--color-shyam));
@@ -181,3 +181,8 @@
   .home-page *, .home-page *::before, .home-page *::after { animation: none !important; transition: none !important; }
   .home-page a:hover img, .home-page a:hover svg, .home-page .arch-frame:hover { transform: none; }
 }
+
+/* Top picks rail right under the hero (Claude): products first, at a glance. */
+.home-picks { padding-top: clamp(1.25rem, 2.5vw, 2.25rem); }
+/* Phones: drop the story/promo tiles from the hero so bestsellers come into view sooner (both links live in the menu). */
+@media (max-width: 639px) { .home-discover { display: none; } .home-featured { min-height: 240px; } }

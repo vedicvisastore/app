@@ -53,7 +53,7 @@ export default async function Shop({ searchParams }: { searchParams: SP }) {
         <Rangoli spin className="absolute -top-28 -right-28 size-72 text-gold opacity-[0.12] sm:size-96" />
         <Container className="relative grid items-end gap-6 py-16 lg:grid-cols-12 lg:py-20">
           <div className="lg:col-span-7">
-            <h1 className="text-[length:var(--text-display-s)] text-on-shyam">{title}</h1>
+            <h1 className="vv-rise text-[length:var(--text-display-s)] text-on-shyam">{title}</h1>
           </div>
           <p className="lead text-on-shyam-2 lg:col-span-4 lg:col-start-9">{blurb}</p>
         </Container>

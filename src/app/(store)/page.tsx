@@ -15,12 +15,13 @@ import { InstagramBadge, YoutubeBadge } from "@/components/site/social";
 import { SetSwitcher } from "./set-switcher";
 import { FestiveHanging } from "@/components/site/festive-hanging";
 import { HeroSlider } from "./hero-slider";
+import { HomePicks } from "./home-picks";
 
 const ESSENTIAL_ORDER = ["jap-mala", "kanthi-mala", "japa-bags", "tilak-chandan", "itra-fragrance", "japa-accessories", "books"];
 
 export default async function Home() {
   const trpc = await api();
-  const [all, settings, { content }] = await Promise.all([trpc.catalog.list({}), trpc.catalog.settings(), getSite()]);
+  const [all, settings, { content }, deals] = await Promise.all([trpc.catalog.list({}), trpc.catalog.settings(), getSite(), trpc.catalog.deals()]);
   const c = content.home;
   const boxes = all.filter((p) => p.bundleGroup === "Bhakti Boxes");
   const japa = all.filter((p) => p.bundleGroup === "Japa Sets");
@@ -33,6 +34,24 @@ export default async function Home() {
   };
   const essentials = [...singles].sort((a, b) => Number(b.trending) - Number(a.trending) || b.score - a.score || Number(b.pinned) - Number(a.pinned) || rank(a.categorySlug) - rank(b.categorySlug)).slice(0, 8);
   const heroBox = boxes.find((b) => b.image) ?? boxes[0];
+
+  // First glance under the hero: bestsellers, offers and new arrivals (boxes and items together).
+  const buyable = all.filter((p) => !p.upcoming && p.available !== 0);
+  const best = [...buyable].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.score - a.score || Number(b.trending) - Number(a.trending) || Number(!!b.image) - Number(!!a.image)).slice(0, 10);
+  const onOffer = deals.products.filter((p) => p.available !== 0).slice(0, 10);
+  const fresh = [...all].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 10);
+  const bestPct = onOffer.reduce((m, p) => Math.max(m, p.mrp ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0), 0);
+  const offerChips = [
+    ...deals.offers.map((o) => ({
+      kind: "offer" as const,
+      text:
+        o.type === "free_shipping"
+          ? `Free shipping${o.minSubtotal ? ` above ${inr(o.minSubtotal)}` : ""}`
+          : `${o.type === "percent" ? `${o.value}%` : inr(o.value)} off${o.minSubtotal ? ` above ${inr(o.minSubtotal)}` : ""}`,
+    })),
+    ...(bestPct > 0 ? [{ kind: "sale" as const, text: `Up to ${bestPct}% off, ${onOffer.length} on offer` }] : []),
+    ...(settings.freeShippingThreshold > 0 ? [{ kind: "shipping" as const, text: `Free shipping above ${inr(settings.freeShippingThreshold)}` }] : []),
+  ];
   const heroSlides = [
     { key: "everyday", label: c.heroEverydayLabel, title: c.heroEverydayTitle, lede: c.heroEverydayLede, href: "/shop", action: c.heroEverydayAction, product: all.find((p) => p.trending && p.image) ?? heroBox ?? all[0], promoWord: "जप", promoTitle: japa.length ? fmt(c.japaTile, { price: inr(Math.min(...japa.map((p) => p.price))) }) : c.heroEverydayLabel, promoHref: japa.length ? "/shop?group=japa-sets" : "/shop", promoAction: japa.length ? c.japaTileLink : c.heroEverydayAction },
     { key: "japa", label: c.setsJapaTab, title: c.heroJapaTitle, lede: c.heroJapaLede, href: "/shop?group=japa-sets", action: c.japaTileLink, product: japa.find((p) => p.image) ?? japa[0], promoWord: "श्रृंगार", promoTitle: c.setsShringarTab, promoHref: "/shop?group=shringar-kits", promoAction: c.heroShringarAction },
@@ -88,6 +107,8 @@ export default async function Home() {
         </Container>
       </section>
 
+      <HomePicks best={best} offers={onOffer} fresh={fresh} chips={offerChips} />
+
       {boxes.length > 0 && <OrnamentDivider kind="lotus" className="home-collection-ornament" />}
 
       {/* The boxes */}
@@ -110,6 +131,9 @@ export default async function Home() {
           </Container>
         </section>
       )}
+
+      {/* Japa sets and shringar kits */}
+      {(japa.length > 0 || shringar.length > 0) && <SetSwitcher japa={japa} shringar={shringar} />}
 
       {/* Shloka band: the brand's line, set as the picture, beside the user's own painting */}
       <section className="home-philosophy on-dark" aria-labelledby="shloka">
@@ -149,8 +173,6 @@ export default async function Home() {
         </section>
       )}
 
-      {/* Japa sets and shringar kits */}
-      {(japa.length > 0 || shringar.length > 0) && <SetSwitcher japa={japa} shringar={shringar} />}
 
       {/* Follow along: the brand's own channels */}
       {(socialUrl("instagram", settings.instagram) || socialUrl("youtube", settings.youtube)) && (

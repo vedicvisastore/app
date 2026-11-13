@@ -10,11 +10,11 @@ export function PageIntro({ title, lede, eyebrow, className, children }: { title
       <Container className="relative grid items-end gap-6 py-12 sm:py-16 lg:grid-cols-12 lg:py-20">
         <div className="lg:col-span-7">
           {eyebrow && <div className="mb-3 text-sm text-on-shyam-2">{eyebrow}</div>}
-          <h1 className="text-[length:var(--text-display-s)] text-on-shyam">{title}</h1>
+          <h1 className="vv-rise text-[length:var(--text-display-s)] text-on-shyam">{title}</h1>
         </div>
         {(lede || children) && (
           <div className="lg:col-span-4 lg:col-start-9">
-            {lede && <p className="lead text-on-shyam-2">{lede}</p>}
+            {lede && <p className="vv-rise-late lead text-on-shyam-2">{lede}</p>}
             {children}
           </div>
         )}
@@ -30,7 +30,7 @@ export function ProductGrid({ children }: { children: React.ReactNode }) {
 export function SectionTitle({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-3 border-b border-line pb-4">
-      <h2 className="text-[length:clamp(1.75rem,2vw+1rem,2.5rem)]">{children}</h2>
+      <h2 className="vv-reveal text-[length:clamp(1.75rem,2vw+1rem,2.5rem)]">{children}</h2>
       {aside}
     </div>
   );

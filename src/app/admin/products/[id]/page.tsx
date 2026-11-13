@@ -59,9 +59,7 @@ function MediaUploader({ images, onChange }: { images: string[]; onChange: (imgs
           if (!res.ok) throw new Error(`R2 upload failed (${res.status}). Check the bucket's CORS settings.`);
           added.push(p.publicUrl);
         } else {
-          const fd = new FormData();
-          fd.append("file", file);
-          const res = await fetch("/api/upload", { method: "POST", body: fd });
+          const res = await fetch(`/api/upload?name=${encodeURIComponent(file.name)}`, { method: "POST", body: file, headers: { "Content-Type": file.type } });
           const j = (await res.json()) as { url?: string; error?: string };
           if (!res.ok || !j.url) throw new Error(j.error ?? "Upload failed");
           added.push(j.url);

@@ -53,7 +53,7 @@ function Editor({ initialItems, initialSeconds }: { initialItems: RibbonItem[]; 
   const clean = items.map((i) => ({ text: i.text.trim(), href: i.href?.trim() || undefined })).filter((i) => i.text);
 
   return (
-    <div className="mx-auto max-w-3xl pb-28">
+    <div className="w-full pb-28">
       <PageHeader title="Top ribbon" description="The strip that scrolls across the very top of the store. Each message can link to a page, like /deals or /c/corporate-gifting." />
 
       {/* Preview */}
@@ -146,7 +146,7 @@ function Editor({ initialItems, initialSeconds }: { initialItems: RibbonItem[]; 
       </Card>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] backdrop-blur lg:left-[248px]">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 lg:px-6">
           <p className="text-sm text-ink-soft">{dirty ? "You have unsaved changes" : "All changes saved"}</p>
           <Button size="sm" disabled={!dirty || save.isPending} onClick={() => save.mutate({ items: clean, seconds })}>
             {save.isPending ? <Spinner /> : "Save ribbon"}

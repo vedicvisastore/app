@@ -13,7 +13,7 @@ type P = { className?: string };
 /** Marigold-and-mango-leaf garland (bandhanwar) that hangs from the top edge of a band. Repeats to any width. */
 export function Toran({ id, className }: P & { id: string }) {
   return (
-    <svg className={cn("pointer-events-none block h-7 w-full", className)} aria-hidden focusable="false">
+    <svg className={cn("vv-toran pointer-events-none block h-7 w-full", className)} aria-hidden focusable="false">
       <defs>
         <pattern id={id} width="56" height="28" patternUnits="userSpaceOnUse">
           {/* thread */}
@@ -86,5 +86,24 @@ export function PeacockFeather({ className, glint }: P & { glint?: boolean }) {
         <ellipse cx="47" cy="45" rx="2" ry="3" fill="var(--color-paper)" opacity="0.5" className={glint ? "vv-glint" : undefined} />
       </g>
     </svg>
+  );
+}
+
+/** One-time shower of marigold and rose petals over the page (e.g. "order placed"). Fixed positions: no hydration drift. */
+export function PetalShower({ count = 18 }: { count?: number }) {
+  return (
+    <div className="vv-shower pointer-events-none fixed inset-0 z-[450] overflow-hidden" aria-hidden>
+      {Array.from({ length: count }, (_, i) => {
+        const x = (i * 37 + 11) % 100;
+        const size = 10 + ((i * 7) % 9);
+        return (
+          <span key={i} style={{ left: `${x}%`, width: size, height: size * 1.4, animationDuration: `${3.2 + ((i * 13) % 20) / 10}s`, animationDelay: `${((i * 17) % 15) / 10}s` }}>
+            <svg viewBox="0 0 20 28" className="size-full">
+              <path d="M10 1 C17 7 18 17 10 27 C2 17 3 7 10 1z" fill={i % 3 === 0 ? "var(--color-gulal)" : "var(--color-gold)"} opacity="0.85" />
+            </svg>
+          </span>
+        );
+      })}
+    </div>
   );
 }

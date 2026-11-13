@@ -3,7 +3,7 @@
  *   /api/trpc/*                       tRPC (store + admin)
  *   /api/webhooks/razorpay            Razorpay payment webhooks
  *   /api/webhooks/shipping/:provider  Generic shipping webhooks (Shiprocket etc., future)
- *   /api/upload                       Local media uploads (dev only; production uses R2 presigned URLs)
+ *   /api/upload                       Admin media upload (streams into the bound R2 bucket on Workers; public/uploads in dev)
  *   /api/health
  * Mounted by Next.js (src/app/api/[...path]/route.ts), Cloudflare Workers, or the standalone Node server.
  */
@@ -18,7 +18,7 @@ import { transitionOrder } from "./order-transition";
 import { markOrderPaid } from "./orders";
 import { verifyWebhookSignature } from "./razorpay";
 import { appRouter } from "./root";
-import { ALLOWED_MEDIA, mediaKey } from "./storage";
+import { ALLOWED_MEDIA, mediaBucket, mediaKey } from "./storage";
 import { createContext } from "./trpc";
 import { hit, LIMITS } from "./rate-limit";
 
@@ -158,20 +158,31 @@ async function shippingWebhook(req: Request, db: DB, provider: string) {
   return json({ ok: true, matched: true });
 }
 
-/** Dev-only fallback when R2 isn't configured. */
+/**
+ * Admin media upload through our own server: the raw file is the request body (?name=<filename>, Content-Type = file type).
+ * On Workers it streams straight into the bound R2 bucket (no S3 keys needed); in local dev it's written to public/uploads.
+ */
 async function localUpload(req: Request, db: DB) {
-  if (env.isProd || env.r2Configured()) return json({ error: "Use R2 uploads" }, 400);
   const user = await userFromSessionToken(db, parseCookies(req.headers.get("cookie"))[SESSION_COOKIE]);
   if (user?.role !== "admin") return json({ error: "Admins only" }, 403);
-  const form = await req.formData();
-  const file = form.get("file");
-  if (!(file instanceof File)) return json({ error: "No file" }, 400);
-  const maxMb = ALLOWED_MEDIA[file.type];
-  if (!maxMb || file.size > maxMb * 1024 * 1024) return json({ error: "Unsupported file or too large" }, 400);
-  const key = mediaKey(file.name);
+  const type = (req.headers.get("content-type") ?? "").split(";")[0].trim();
+  const size = Number(req.headers.get("content-length") ?? 0);
+  const name = new URL(req.url).searchParams.get("name") ?? "file";
+  const maxMb = ALLOWED_MEDIA[type];
+  if (!maxMb) return json({ error: "Upload JPG, PNG, WebP, AVIF, GIF, MP4, WebM or MOV files." }, 400);
+  if (!size || size > maxMb * 1024 * 1024) return json({ error: `That file is over ${maxMb} MB.` }, 400);
+  if (!req.body) return json({ error: "No file" }, 400);
+  const key = mediaKey(name);
+  const bucket = mediaBucket();
+  const publicUrl = env.r2().publicUrl;
+  if (bucket && publicUrl) {
+    await bucket.put(key, req.body, { httpMetadata: { contentType: type, cacheControl: "public, max-age=31536000, immutable" } });
+    return json({ url: `${publicUrl}/${key}` });
+  }
+  if (env.isProd) return json({ error: "Media storage isn't set up." }, 500);
   const { mkdir, writeFile } = await import("node:fs/promises");
   const dir = `${process.cwd()}/public/uploads/${key.split("/").slice(0, -1).join("/")}`;
   await mkdir(dir, { recursive: true });
-  await writeFile(`${process.cwd()}/public/uploads/${key}`, Buffer.from(await file.arrayBuffer()));
+  await writeFile(`${process.cwd()}/public/uploads/${key}`, Buffer.from(await req.arrayBuffer()));
   return json({ url: `/uploads/${key}` });
 }

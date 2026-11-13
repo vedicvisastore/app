@@ -1,0 +1,63 @@
+/*
+ * Store-wide motion (Claude). Small, slow and decorative; everything is off for prefers-reduced-motion.
+ * Scroll reveals use CSS scroll-driven animations where the browser supports them and simply don't run elsewhere.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  /* Things rise in as they scroll into view: product cards, section titles, lotus dividers. */
+  @supports (animation-timeline: view()) {
+    .vv-reveal {
+      animation: vv-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+    .store-ornament-divider .store-ornament {
+      animation: vv-bloom linear both;
+      animation-timeline: view();
+      animation-range: entry 10% entry 70%;
+    }
+  }
+
+  /* Title band headings rise in on page load. */
+  .vv-rise { animation: vv-rise 0.7s cubic-bezier(.2,.8,.2,1) both; }
+  .vv-rise-late { animation: vv-rise 0.7s cubic-bezier(.2,.8,.2,1) 0.12s both; }
+
+  /* A soft light sweeps across offer chips now and then. */
+  .vv-sheen { position: relative; overflow: hidden; isolation: isolate; }
+  .vv-sheen::after {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.65) 50%, transparent 65%);
+    transform: translateX(-120%);
+    animation: vv-sheen 5.5s ease-in-out infinite;
+  }
+  .vv-sheen:nth-child(2)::after { animation-delay: 0.8s; }
+  .vv-sheen:nth-child(3)::after { animation-delay: 1.6s; }
+
+  /* Ribbon stars twinkle. */
+  .vv-twinkle { animation: vv-twinkle 3.2s ease-in-out infinite; transform-origin: center; }
+
+  /* The toran garland stirs as if in a breeze. */
+  .vv-toran { transform-origin: top center; animation: vv-toran 6s ease-in-out infinite; }
+
+  /* Petals pop out of the cart icon when something is added. */
+  .vv-burst span { position: absolute; left: 50%; top: 50%; width: 6px; height: 9px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; animation: vv-burst 0.7s cubic-bezier(.2,.8,.2,1) forwards; }
+
+  /* Petal shower (order placed). */
+  .vv-shower span { position: absolute; top: -3rem; animation: vv-fall linear forwards; }
+}
+
+@keyframes vv-reveal { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+@keyframes vv-bloom { from { opacity: 0; transform: scale(0.6) rotate(-20deg); } to { opacity: 1; transform: none; } }
+@keyframes vv-rise { from { opacity: 0; transform: translateY(18px); } }
+@keyframes vv-sheen { 0%, 55% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
+@keyframes vv-twinkle { 0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; } 50% { transform: scale(0.6) rotate(45deg); opacity: 0.6; } }
+@keyframes vv-toran { 0%, 100% { transform: skewX(0deg) scaleY(1); } 30% { transform: skewX(-1.5deg) scaleY(1.04); } 65% { transform: skewX(1.2deg) scaleY(0.98); } }
+@keyframes vv-burst {
+  from { transform: translate(-50%, -50%) rotate(var(--r)) translateY(0) scale(0.4); opacity: 1; }
+  to { transform: translate(-50%, -50%) rotate(var(--r)) translateY(-26px) scale(1); opacity: 0; }
+}
+@keyframes vv-fall {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  6% { opacity: 1; }
+  50% { transform: translate(30px, 55vh) rotate(200deg); }
+  100% { transform: translate(-20px, 110vh) rotate(420deg); opacity: 0.2; }
+}

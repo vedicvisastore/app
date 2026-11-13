@@ -13,9 +13,7 @@ export function useUploadFile() {
       if (!res.ok) throw new Error(`Upload failed (${res.status}).`);
       return p.publicUrl;
     }
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    const res = await fetch(`/api/upload?name=${encodeURIComponent(file.name)}`, { method: "POST", body: file, headers: { "Content-Type": file.type } });
     const j = (await res.json()) as { url?: string; error?: string };
     if (!res.ok || !j.url) throw new Error(j.error ?? "Upload failed");
     return j.url;

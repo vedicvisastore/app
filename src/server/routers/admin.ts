@@ -33,7 +33,7 @@ import { getSettings, saveSettings } from "../settings";
 import { productSalesDetail, productSalesTable } from "../product-analytics";
 import { clearPreviewCookie, encodePreview, previewCookie } from "../content-preview";
 import { moveStock, setStock } from "../stock";
-import { ALLOWED_MEDIA, deleteMedia, presignUpload } from "../storage";
+import { ALLOWED_MEDIA, deleteMedia, mediaBucket, presignUpload } from "../storage";
 import { adminProcedure, protectedProcedure, router } from "../trpc";
 
 /** Custom pages that can sit in the store menu at once (keeps the menu short). */
@@ -354,7 +354,9 @@ export const adminRouter = router({
       if (!maxMb) throw new TRPCError({ code: "BAD_REQUEST", message: "Upload JPG, PNG, WebP, AVIF, GIF, MP4, WebM or MOV files." });
       if (input.size > maxMb * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: `That file is over ${maxMb} MB.` });
       if (!env.r2Configured()) {
-        if (env.isProd) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "R2 storage isn't configured." });
+        // On Workers the bucket is bound directly: the browser sends the file to /api/upload, which streams it into R2.
+        if (mediaBucket() && env.r2().publicUrl) return { mode: "local" as const };
+        if (env.isProd) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Media storage isn't set up (R2_PUBLIC_URL or the bucket binding is missing)." });
         return { mode: "local" as const };
       }
       return { mode: "r2" as const, ...(await presignUpload(input.filename, input.contentType)) };

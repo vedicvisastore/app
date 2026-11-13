@@ -12,10 +12,10 @@ function StockNote({ available }: { available: number | null }) {
 
 export function ProductCard({ p, priority }: { p: CardProduct; priority?: boolean }) {
   return (
-    <article className="group relative flex flex-col">
+    <article className="vv-reveal group relative flex flex-col">
       <Link href={`/p/${p.slug}`} aria-label={p.name} className="relative block aspect-[4/5] overflow-hidden rounded-[var(--radius-card)] bg-paper-2">
         {p.image ? (
-          <Media src={p.image} alt={p.name} priority={priority} className="h-full w-full object-cover" />
+          <Media src={p.image} alt={p.name} priority={priority} className="h-full w-full object-cover transition-transform duration-700 ease-[var(--ease-out)] group-hover:scale-[1.04]" />
         ) : (
           <ProductArt name={p.name} seed={p.id} />
         )}
