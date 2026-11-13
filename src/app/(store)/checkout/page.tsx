@@ -10,5 +10,5 @@ export default async function CheckoutPage() {
   const me = await trpc.auth.me();
   if (!me) redirect("/login?next=/checkout");
   const [addresses, config] = await Promise.all([trpc.account.addresses(), trpc.checkout.config()]);
-  return <CheckoutForm email={me.email} addresses={addresses} mock={config.mock} />;
+  return <CheckoutForm email={me.email} addresses={addresses} mock={config.mock} adminTest={config.adminTest} />;
 }

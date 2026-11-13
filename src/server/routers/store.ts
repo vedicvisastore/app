@@ -218,8 +218,15 @@ export const trackRouter = router({
     }),
 });
 
+/**
+ * Skipping the payment window: in local dev (ALLOW_MOCK_PAYMENTS), or for ADMINS on any server so the owner can
+ * test checkout end to end in production. Admins can already mark any order paid in the admin panel, so this
+ * grants no new power; shoppers always pay. Such orders get a payment id starting "admin_test_".
+ */
+const canSkipPayment = (user: { role: string } | null | undefined) => env.mockPayments() || user?.role === "admin";
+
 export const checkoutRouter = router({
-  config: publicProcedure.query(() => ({ mock: env.mockPayments(), razorpayKeyId: env.razorpay().keyId, google: googleConfigured() })),
+  config: publicProcedure.query(({ ctx }) => ({ mock: canSkipPayment(ctx.user), adminTest: !env.mockPayments() && ctx.user?.role === "admin", razorpayKeyId: env.razorpay().keyId, google: googleConfigured() })),
   create: protectedProcedure
     .input(
       z.object({
@@ -260,7 +267,7 @@ export const checkoutRouter = router({
         await markOrderPaid(ctx.db, order.id, null, "system");
         return { number: order.number, paid: true as const };
       }
-      if (env.mockPayments()) return { number: order.number, mock: true as const, amount: order.total };
+      if (canSkipPayment(ctx.user)) return { number: order.number, mock: true as const, amount: order.total };
 
       const rzp = await createRazorpayOrder(order.total, order.number, { order_number: order.number });
       await ctx.db.update(orders).set({ razorpayOrderId: rzp.id }).where(eq(orders.id, order.id));
@@ -286,8 +293,8 @@ export const checkoutRouter = router({
       const [o] = await ctx.db.select().from(orders).where(and(eq(orders.number, input.number), eq(orders.userId, ctx.user.id))).limit(1);
       if (!o) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
       if ("mock" in input) {
-        if (!env.mockPayments()) throw new TRPCError({ code: "FORBIDDEN", message: "Mock payments are disabled." });
-        const r = await markOrderPaid(ctx.db, o.id, "mock_" + Date.now(), "checkout");
+        if (!canSkipPayment(ctx.user)) throw new TRPCError({ code: "FORBIDDEN", message: "Payment is required." });
+        const r = await markOrderPaid(ctx.db, o.id, (env.mockPayments() ? "mock_" : "admin_test_") + Date.now(), "checkout");
         if (!r.ok) throw new TRPCError({ code: "BAD_REQUEST", message: r.message });
         return { ok: true };
       }

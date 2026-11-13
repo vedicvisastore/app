@@ -77,7 +77,7 @@ function checkoutReducer(state: Phase, event: Event): Phase {
   }
 }
 
-export function CheckoutForm({ email, addresses, mock }: { email: string; addresses: Address[]; mock: boolean }) {
+export function CheckoutForm({ email, addresses, mock, adminTest = false }: { email: string; addresses: Address[]; mock: boolean; adminTest?: boolean }) {
   const trpc = useTRPC();
   const router = useRouter();
   const cart = useCart();
@@ -290,9 +290,13 @@ export function CheckoutForm({ email, addresses, mock }: { email: string; addres
       {phase.name === "paying" && phase.order.mock && mock && (
         <div className="fixed inset-0 z-[400] grid place-items-center bg-ink/40 p-4" role="dialog" aria-modal="true" aria-labelledby="mock-title">
           <div className="w-full max-w-sm rounded-3xl bg-paper p-6 text-center shadow-float">
-            <p className="text-sm font-bold text-gold-ink">Test mode</p>
-            <h2 id="mock-title" className="mt-1 text-3xl">Simulate payment</h2>
-            <p className="mt-2 text-sm text-ink-soft">Razorpay keys aren’t set, so this dev build skips the real payment window. Order {phase.order.number}, {inr(phase.order.mock.amount)}.</p>
+            <p className="text-sm font-bold text-gold-ink">{adminTest ? "Admin test order" : "Test mode"}</p>
+            <h2 id="mock-title" className="mt-1 text-3xl">Skip payment</h2>
+            <p className="mt-2 text-sm text-ink-soft">
+              {adminTest
+                ? `You’re signed in as an admin, so no money is taken. Order ${phase.order.number} (${inr(phase.order.mock.amount)}) will be marked paid, stock goes out and the confirmation email is sent. Cancel it in Admin → Orders with “put back in stock” when you’re done testing.`
+                : `Razorpay keys aren’t set, so this dev build skips the real payment window. Order ${phase.order.number}, ${inr(phase.order.mock.amount)}.`}
+            </p>
             <div className="mt-6 grid gap-2">
               <Button onClick={() => confirmPayment(phase.order.number, { mock: true })}>Mark as paid</Button>
               <Button variant="ghost" onClick={() => dispatch({ type: "DISMISSED" })}>
