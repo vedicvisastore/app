@@ -54,7 +54,7 @@ const SWATCHES = [
   "bg-shyam text-on-shyam [--arch:var(--color-shyam-3)]",
 ];
 
-/** Stand-in for products without photos: a brand colour block, the arch, and the name in Rozha. */
+/** Rectangular placeholder with the mandir motif inside the card. */
 export function ProductArt({ name, seed, className }: { name: string; seed: number; className?: string; size?: "sm" | "md" }) {
   const clean = name.replace(/\(.*?\)/g, "").trim();
   const initials = clean.split(/\s+/).filter((w) => /^[A-Za-z]/.test(w)).slice(0, 2).map((w) => w[0].toUpperCase()).join("");

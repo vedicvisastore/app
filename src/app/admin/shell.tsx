@@ -1,10 +1,10 @@
 "use client";
-import { Map as MapIcon, Palette, Type, BadgePercent, Boxes, FileSpreadsheet, FolderTree, LayoutDashboard, Menu, Package, Settings, ShoppingCart, Store, X } from "lucide-react";
+import { CalendarHeart, Map as MapIcon, Megaphone, Palette, Type, BadgePercent, Boxes, FileSpreadsheet, FolderTree, LayoutDashboard, Menu, Package, Settings, ShoppingCart, Store, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, storeHref } from "@/lib/utils";
 import { ToastProvider } from "./_ui";
 
 const NAV = [
@@ -15,6 +15,8 @@ const NAV = [
   { href: "/admin/bundles", label: "Boxes & bundles", icon: Boxes },
   { href: "/admin/categories", label: "Categories", icon: FolderTree },
   { href: "/admin/discounts", label: "Sales & coupons", icon: BadgePercent },
+  { href: "/admin/festivals", label: "Custom pages", icon: CalendarHeart },
+  { href: "/admin/ribbon", label: "Top ribbon", icon: Megaphone },
   { href: "/admin/themes", label: "Themes", icon: Palette },
   { href: "/admin/content", label: "Store text", icon: Type },
   { href: "/admin/import", label: "Import Excel", icon: FileSpreadsheet },
@@ -42,9 +44,9 @@ export function AdminShell({ email, children }: { email: string; children: React
         );
       })}
       <div className="mt-auto space-y-1 border-t border-line-strong/50 pt-4">
-        <Link href="/" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-normal text-ink-soft hover:text-royal">
+        <a href={storeHref("/")} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-normal text-ink-soft hover:text-royal">
           <Store className="size-[18px]" aria-hidden /> View store
-        </Link>
+        </a>
         <p className="truncate px-3 text-xs text-ink-mute">{email}</p>
       </div>
     </nav>

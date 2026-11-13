@@ -1,0 +1,11 @@
+/* Ornament motion (src/components/site/ornaments.tsx). Small and slow; off for reduced motion. */
+.vv-sway { transform-origin: 50% 100%; animation: vv-sway 6s ease-in-out infinite; }
+@keyframes vv-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(5deg); } }
+.vv-draw { transform-origin: left center; animation: vv-draw 0.9s cubic-bezier(.2,.8,.2,1) 0.15s both; }
+@keyframes vv-draw { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+.vv-glint { animation: vv-glint 4.5s ease-in-out infinite; }
+@keyframes vv-glint { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.85; } }
+/* Rangoli turns very slowly, like a wheel: one turn every 2 minutes. */
+.vv-spin { animation: vv-spin 120s linear infinite; }
+@keyframes vv-spin { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .vv-sway, .vv-draw, .vv-glint, .vv-spin { animation: none; } }

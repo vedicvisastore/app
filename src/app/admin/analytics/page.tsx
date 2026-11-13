@@ -6,6 +6,7 @@ import { useTRPC } from "@/lib/trpc/client";
 import { inr } from "@/lib/utils";
 import { Card, PageHeader, Stat, Tabs } from "../_ui";
 import { IndiaPixelMap } from "./india-map";
+import { AnalyticsNav } from "./nav";
 
 const RANGES = [
   { value: "7", label: "7 days" },
@@ -57,6 +58,7 @@ export default function AnalyticsPage() {
 
   return (
     <>
+      <AnalyticsNav />
       <PageHeader title="Where orders come from" description="Paid orders by delivery pincode. Scroll or click the map to zoom into a region, drag to move around, and hover a square for its towns." />
       <div className="mb-4 max-w-md">
         <Tabs value={range} onChange={setRange} items={RANGES.map((r) => ({ value: r.value, label: r.label }))} />

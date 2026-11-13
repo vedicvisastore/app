@@ -52,5 +52,6 @@ export const LIMITS = {
   couponIp: { name: "coupon-ip", limit: 40, windowSec: 600, shared: true },
   quoteIp: { name: "quote-ip", limit: 240, windowSec: 60 },
   pincodeIp: { name: "pincode-ip", limit: 40, windowSec: 60 },
+  trackIp: { name: "track-ip", limit: 20, windowSec: 600 },
   apiIp: { name: "api-ip", limit: 600, windowSec: 60 },
 } satisfies Record<string, Limit>;

@@ -1,8 +1,10 @@
+import { OrnamentDivider } from "./ornament";
 import Image from "next/image";
 import Link from "next/link";
 import { socialUrl, type StoreSettings } from "@/lib/settings-defaults";
 import type { SiteContent } from "@/content/defaults";
 import { Container } from "../ui";
+import { Rangoli } from "./ornaments";
 import { InstagramIcon, YoutubeIcon } from "./social";
 
 const linkCls = "inline-flex items-center gap-2.5 whitespace-nowrap leading-6 transition-colors duration-[var(--dur-short)] hover:text-gold";
@@ -19,9 +21,12 @@ function Column({ title, children }: { title: string; children: React.ReactNode 
 export function Footer({ settings, categories = [], copy }: { settings: StoreSettings; categories?: { slug: string; name: string }[]; copy: SiteContent["footer"] }) {
   const ig = socialUrl("instagram", settings.instagram);
   const yt = socialUrl("youtube", settings.youtube);
+  const creator = socialUrl("instagram", settings.creatorInstagram);
   return (
-    <footer className="on-dark">
-      <Container className="grid gap-x-[var(--gap-columns)] gap-y-12 pt-16 pb-12 lg:grid-cols-12 lg:pt-20">
+    <footer className="on-dark relative overflow-hidden">
+      <Rangoli spin className="absolute -right-24 -bottom-24 size-80 text-gold opacity-[0.07] sm:size-[26rem]" />
+      <OrnamentDivider kind="diya" className="footer-ornament" />
+      <Container className="relative grid gap-x-[var(--gap-columns)] gap-y-12 pt-16 pb-12 lg:grid-cols-12 lg:pt-20">
         <div className="flex items-start gap-5 lg:col-span-5">
           <Image src="/brand/logo-round.jpg" alt="VedicVisa" width={512} height={512} className="size-20 shrink-0 rounded-full sm:size-24" />
           <div className="min-w-0">
@@ -40,7 +45,7 @@ export function Footer({ settings, categories = [], copy }: { settings: StoreSet
             <li><Link className={linkCls} href="/shop">Everything</Link></li>
           </Column>
           <Column title={copy.help}>
-            <li><Link className={linkCls} href="/account">Track an order</Link></li>
+            <li><Link className={linkCls} href="/track">Track an order</Link></li>
             <li><Link className={linkCls} href="/shipping">Shipping and returns</Link></li>
             <li><Link className={linkCls} href="/about">Our story</Link></li>
           </Column>
@@ -49,6 +54,13 @@ export function Footer({ settings, categories = [], copy }: { settings: StoreSet
               <li>
                 <a className={linkCls} href={ig} target="_blank" rel="noreferrer">
                   <InstagramIcon className="size-5 shrink-0" /> Instagram
+                </a>
+              </li>
+            )}
+            {creator && (
+              <li>
+                <a className={linkCls} href={creator} target="_blank" rel="noreferrer">
+                  <InstagramIcon className="size-5 shrink-0" /> Meet the creator
                 </a>
               </li>
             )}

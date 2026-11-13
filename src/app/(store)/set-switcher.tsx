@@ -52,7 +52,7 @@ export function SetSwitcher({ japa, shringar }: { japa: CardProduct[]; shringar:
                     <Link href={`/p/${p.slug}`} className="font-display text-[length:var(--text-title)] leading-tight hover:text-royal">
                       {p.name}
                     </Link>
-                    <p className="mt-1 text-sm text-ink-soft">{p.tagline ?? `${p.itemCount} items`}</p>
+                    {p.tagline && <p className="mt-1 text-sm text-ink-soft">{p.tagline}</p>}
                   </div>
                   <Price price={p.price} mrp={p.mrp} size="sm" className="justify-end text-right" />
                   {p.upcoming ? <span className="text-sm font-bold whitespace-nowrap text-gold-ink">{launchLabel(p.launchAt)}</span> : <QuickAdd productId={p.id} name={p.name} disabled={p.available === 0} />}

@@ -73,3 +73,6 @@ export function launchLabel(launchAt: Date | string | null | undefined) {
   const d = new Date(launchAt);
   return `Launching ${d.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" })}`;
 }
+
+/** Link from the admin panel to a storefront page. On admin.vedicvisa.com a bare "/x" would open the admin's /x, so use the store's full address when known. */
+export const storeHref = (path: string) => `${(process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "")}${path}`;

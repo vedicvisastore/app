@@ -1,11 +1,12 @@
+import { OrnamentDivider } from "@/components/site/ornament";
 import Image from "next/image";
-import { MapPin, PackageCheck, Truck, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import "./home.css";
 import Link from "next/link";
 import { BoxCard, ProductCard } from "@/components/product/cards";
 import { QuickAdd } from "@/components/product/quick-add";
 import { ButtonLink, Container, Media, Price, ProductArt } from "@/components/ui";
-import { socialUrl } from "@/lib/settings-defaults";
+import { socialHandle, socialUrl } from "@/lib/settings-defaults";
 import { inr, launchLabel } from "@/lib/utils";
 import { api } from "@/server/caller";
 import { fmt } from "@/content/defaults";
@@ -13,6 +14,7 @@ import { getSite } from "@/server/site-config";
 import { InstagramBadge, YoutubeBadge } from "@/components/site/social";
 import { SetSwitcher } from "./set-switcher";
 import { FestiveHanging } from "@/components/site/festive-hanging";
+import { HeroSlider } from "./hero-slider";
 
 const ESSENTIAL_ORDER = ["jap-mala", "kanthi-mala", "japa-bags", "tilak-chandan", "itra-fragrance", "japa-accessories", "books"];
 
@@ -29,9 +31,14 @@ export default async function Home() {
     const i = ESSENTIAL_ORDER.indexOf(slug ?? "");
     return i < 0 ? 99 : i;
   };
-  const essentials = (anyTrending ? singles : [...singles].sort((a, b) => Number(b.pinned) - Number(a.pinned) || rank(a.categorySlug) - rank(b.categorySlug))).slice(0, 8);
+  const essentials = [...singles].sort((a, b) => Number(b.trending) - Number(a.trending) || b.score - a.score || Number(b.pinned) - Number(a.pinned) || rank(a.categorySlug) - rank(b.categorySlug)).slice(0, 8);
   const heroBox = boxes.find((b) => b.image) ?? boxes[0];
-  const inside = heroBox ? await trpc.catalog.spotlight({ slug: heroBox.slug }) : null;
+  const heroSlides = [
+    { key: "everyday", label: c.heroEverydayLabel, title: c.heroEverydayTitle, lede: c.heroEverydayLede, href: "/shop", action: c.heroEverydayAction, product: all.find((p) => p.trending && p.image) ?? heroBox ?? all[0], promoWord: "जप", promoTitle: japa.length ? fmt(c.japaTile, { price: inr(Math.min(...japa.map((p) => p.price))) }) : c.heroEverydayLabel, promoHref: japa.length ? "/shop?group=japa-sets" : "/shop", promoAction: japa.length ? c.japaTileLink : c.heroEverydayAction },
+    { key: "japa", label: c.setsJapaTab, title: c.heroJapaTitle, lede: c.heroJapaLede, href: "/shop?group=japa-sets", action: c.japaTileLink, product: japa.find((p) => p.image) ?? japa[0], promoWord: "श्रृंगार", promoTitle: c.setsShringarTab, promoHref: "/shop?group=shringar-kits", promoAction: c.heroShringarAction },
+    { key: "shringar", label: c.setsShringarTab, title: c.heroShringarTitle, lede: c.heroShringarLede, href: "/shop?group=shringar-kits", action: c.heroShringarAction, product: shringar.find((p) => p.image) ?? shringar[0], promoWord: "भक्ति", promoTitle: content.nav.boxes, promoHref: "/shop?group=bhakti-boxes", promoAction: c.heroPrimary },
+    { key: "boxes", label: content.nav.boxes, title: c.heroTitle, lede: c.heroLede, href: "/shop?group=bhakti-boxes", action: c.heroPrimary, product: heroBox, promoWord: "पूजा", promoTitle: singles.length ? fmt(c.heroEssentialsTile, { price: inr(Math.min(...singles.map((p) => p.price))) }) : c.heroEverydayLabel, promoHref: "/shop", promoAction: c.heroEverydayAction },
+  ].filter((slide) => slide.product);
 
   return (
     <div className="home-page">
@@ -39,63 +46,49 @@ export default async function Home() {
       <section className="home-hero relative" aria-label="VedicVisa">
         <FestiveHanging />
         <Container>
-          <div className="home-bento">
-            <div className="home-intro on-dark">
-              <span className="home-door arch" aria-hidden />
-              <div className="home-intro-content">
-                <h1>{c.heroTitle}</h1>
-                <p className="home-lead">{c.heroLede}</p>
-                <div className="home-actions">
-                  <ButtonLink href="/shop?group=bhakti-boxes" size="lg">{c.heroPrimary}</ButtonLink>
-                  <ButtonLink href="/shop" size="lg" variant="outline" className="text-white">{c.heroSecondary}</ButtonLink>
-                </div>
-              </div>
-              <div className="home-signature">
-                <span className="home-signature-rule" aria-hidden />
-                <p className="deva" lang="sa">धार्यते इति धर्मः</p>
-              </div>
-            </div>
-
-            {heroBox && (
-              <div className="home-featured">
-                <Link href={`/p/${heroBox.slug}`} className="home-featured-image" aria-label={`Explore ${heroBox.name}`}>
-                  {heroBox.image ? (
-                    <Media src={heroBox.image} alt={heroBox.name} priority className="h-full w-full object-cover" />
-                  ) : (
-                    <ProductArt name={heroBox.name} seed={heroBox.id} />
-                  )}
-                </Link>
-                <div className="home-featured-caption">
-                  <div className="min-w-0">
-                    <Link href={`/p/${heroBox.slug}`} className="home-featured-name">{heroBox.name}</Link>
-                    <Price price={heroBox.price} mrp={heroBox.mrp} size="sm" />
+          <HeroSlider labels={heroSlides.map((slide) => slide.label)}>
+            {heroSlides.map((slide, i) => {
+              const product = slide.product!;
+              return (
+                <div key={slide.key} className={`home-bento home-slide-${slide.key}`}>
+                  <div className="home-intro on-dark">
+                    <span className="home-door arch" aria-hidden />
+                    <div className="home-intro-content">
+                      {i === 0 ? <h1 className="home-hero-title">{slide.title}</h1> : <h2 className="home-hero-title">{slide.title}</h2>}
+                      <p className="home-lead">{slide.lede}</p>
+                      <div className="home-actions">
+                        <ButtonLink href={slide.href} size="lg">{slide.action}</ButtonLink>
+                        <Link href={i === 0 ? (japa.length ? "/shop?group=japa-sets" : "/about") : "/shop"} className="home-secondary">{i === 0 ? (japa.length ? c.japaTileLink : c.storyTile) : c.heroSecondary}</Link>
+                      </div>
+                    </div>
                   </div>
-                  {heroBox.upcoming ? <span className="text-sm font-bold text-gold-ink">{launchLabel(heroBox.launchAt)}</span> : <QuickAdd productId={heroBox.id} name={heroBox.name} disabled={heroBox.available === 0} />}
+                  <div className="home-featured">
+                    <Link href={`/p/${product.slug}`} className="home-featured-image" aria-label={product.name}>
+                      {product.image ? <Media src={product.image} alt={product.name} priority={i === 0} className="h-full w-full object-cover" /> : <ProductArt name={product.name} seed={product.id} />}
+                    </Link>
+                    <div className="home-featured-caption">
+                      <div className="min-w-0"><Link href={`/p/${product.slug}`} className="home-featured-name">{product.name}</Link><Price price={product.price} mrp={product.mrp} size="sm" /></div>
+                      {product.upcoming ? <span className="text-sm font-bold text-gold-ink">{launchLabel(product.launchAt)}</span> : <QuickAdd productId={product.id} name={product.name} disabled={product.available === 0} />}
+                    </div>
+                  </div>
+                  <div className="home-discover">
+                    <Link href="/about" className="home-story-link group">
+                      <Image src="/brand/hero-temple.jpg" alt="A temple by a lotus pond with a peacock" fill sizes="(min-width: 1440px) 280px, (min-width: 1024px) 22vw, 50vw" className="object-cover object-[80%_62%]" />
+                      <span className="home-story-caption"><span>{c.storyTile}</span><ArrowUpRight aria-hidden size={20} /></span>
+                    </Link>
+                    <Link href={slide.promoHref} className="home-japa">
+                      <span className="home-japa-title">{slide.promoTitle}</span>
+                      <span className="home-japa-action"><span>{slide.promoAction}</span><ArrowUpRight aria-hidden size={20} /></span>
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            <div className="home-discover">
-              <Link href="/about" className="home-story-link group">
-                <Image src="/brand/hero-temple.jpg" alt="A temple by a lotus pond with a peacock" fill sizes="(min-width: 1440px) 280px, (min-width: 1024px) 22vw, 50vw" className="object-cover object-[80%_62%]" />
-                <span className="home-story-caption"><span>{c.storyTile}</span><ArrowUpRight aria-hidden size={20} /></span>
-              </Link>
-              {japa[0] && (
-                <Link href="/shop?group=japa-sets" className="home-japa">
-                  <span className="deva home-japa-word" aria-hidden lang="sa">जप</span>
-                  <span className="home-japa-title">{fmt(c.japaTile, { price: inr(Math.min(...japa.map((j) => j.price))) })}</span>
-                  <span className="home-japa-action"><span>{c.japaTileLink}</span><ArrowUpRight aria-hidden size={20} /></span>
-                </Link>
-              )}
-            </div>
-          </div>
-          <ul className="home-delivery" aria-label="Delivery information">
-            <li><MapPin aria-hidden /><span>{c.chipShipping}</span></li>
-            <li><PackageCheck aria-hidden /><span>{fmt(c.chipDelivery, { min: settings.deliveryDaysMin, max: settings.deliveryDaysMax })}</span></li>
-            {settings.freeShippingThreshold > 0 && <li><Truck aria-hidden /><span>{fmt(c.chipFree, { threshold: inr(settings.freeShippingThreshold) })}</span></li>}
-          </ul>
+              );
+            })}
+          </HeroSlider>
         </Container>
       </section>
+
+      {boxes.length > 0 && <OrnamentDivider kind="lotus" className="home-collection-ornament" />}
 
       {/* The boxes */}
       {boxes.length > 0 && (
@@ -118,50 +111,21 @@ export default async function Home() {
         </section>
       )}
 
-      {/* What's inside: the box's own contents, as an index */}
-      {inside && inside.components.length > 0 && (
-        <section id="inside" className="home-inside" aria-labelledby="inside-h">
-          <Container className="grid gap-12 lg:grid-cols-12">
-            <div className="lg:col-span-4">
-              <h2 id="inside-h">{fmt(c.insideTitle, { name: inside.name.replace(/ Bhakti Box$/, "") })}</h2>
-              {inside.worth > inside.price && (
-                <p className="mt-6 text-lg text-ink-soft">{fmt(c.insideWorth, { worth: inr(inside.worth), price: inr(inside.price) })}</p>
-              )}
-              <ButtonLink href={`/p/${inside.slug}`} className="mt-8" variant="outline">
-                {c.insideCta}
-              </ButtonLink>
-            </div>
-            <ol className="grid content-start gap-x-10 sm:grid-cols-2 lg:col-span-7 lg:col-start-6">
-              {inside.components.map((c) => (
-                <li key={c.id} className="flex items-baseline justify-between gap-4 border-b border-rule py-3.5">
-                  <Link href={`/p/${c.slug}`} className="text-[1.05rem] hover:text-royal">
-                    {c.qty > 1 && `${c.qty} × `}
-                    {c.name}
-                  </Link>
-                  <span className="text-sm text-ink-soft tabular-nums">{inr(c.price * c.qty)}</span>
-                </li>
-              ))}
-            </ol>
-          </Container>
-        </section>
-      )}
-
       {/* Shloka band: the brand's line, set as the picture, beside the user's own painting */}
       <section className="home-philosophy on-dark" aria-labelledby="shloka">
-        <Container className="home-philosophy-grid grid items-center gap-12 lg:grid-cols-12">
-          <div className="lg:col-span-7">
-            <h2 id="shloka" className="deva max-w-none text-[clamp(3.5rem,8vw,7.5rem)] leading-[1.1] text-gold" lang="sa">
-              धार्यते इति धर्मः
-            </h2>
-            <p className="font-display mt-8 max-w-[24ch] text-[length:var(--text-display-s)] leading-[1.1] text-on-shyam">{c.shlokaTranslation}</p>
-            <p className="mt-6 max-w-[48ch] text-on-shyam-2">{c.shlokaBody}</p>
-          </div>
-          <div className="lg:col-span-4 lg:col-start-9">
-            <div className="arch-frame mx-auto max-w-[360px]">
+        <Container className="home-philosophy-grid">
+          <div className="home-philosophy-art">
+            <div className="arch-frame">
               <div className="arch relative aspect-[4/5] overflow-hidden">
-                <Image src="/brand/hero-temple.jpg" alt="A temple by a lotus pond, with a peacock and a resting cow and calf" fill sizes="360px" className="object-cover object-[50%_62%]" />
+                <Image src="/brand/hero-temple.jpg" alt="A temple by a lotus pond, with a peacock and a resting cow and calf" fill sizes="(min-width: 1024px) 420px, 80vw" className="object-cover object-[50%_62%]" />
               </div>
             </div>
+          </div>
+          <div className="home-philosophy-copy">
+            <h2 id="shloka" className="deva" lang="sa">धार्यते इति धर्मः</h2>
+            <p className="home-philosophy-translation font-display">{c.shlokaTranslation}</p>
+            <p className="home-philosophy-body">{c.shlokaBody}</p>
+            <ButtonLink href="/about" variant="outline" className="home-philosophy-action">{c.storyTile}</ButtonLink>
           </div>
         </Container>
       </section>
@@ -197,17 +161,24 @@ export default async function Home() {
               {socialUrl("instagram", settings.instagram) && (
                 <a href={socialUrl("instagram", settings.instagram)!} target="_blank" rel="noreferrer" className="home-social-link group">
                   <InstagramBadge className="home-social-icon" />
-                  <span className="deva home-social-word" aria-hidden lang="sa">दर्शन</span>
                   <span>
-                    <span className="home-social-name font-display">@vedicvisa</span>
+                    <span className="home-social-name font-display">{socialHandle(socialUrl("instagram", settings.instagram))}</span>
                     <span className="home-social-action">{c.followInstagram}</span>
+                  </span>
+                </a>
+              )}
+              {socialUrl("instagram", settings.creatorInstagram) && (
+                <a href={socialUrl("instagram", settings.creatorInstagram)!} target="_blank" rel="noreferrer" className="home-social-link group">
+                  <InstagramBadge className="home-social-icon" />
+                  <span>
+                    <span className="home-social-name font-display">{socialHandle(socialUrl("instagram", settings.creatorInstagram))}</span>
+                    <span className="home-social-action">{c.followCreator}</span>
                   </span>
                 </a>
               )}
               {socialUrl("youtube", settings.youtube) && (
                 <a href={socialUrl("youtube", settings.youtube)!} target="_blank" rel="noreferrer" className="home-social-link group">
                   <YoutubeBadge className="home-social-icon" />
-                  <span className="deva home-social-word" aria-hidden lang="sa">कथा</span>
                   <span>
                     <span className="home-social-name font-display">{c.followYoutubeTitle}</span>
                     <span className="home-social-action">{c.followYoutube}</span>

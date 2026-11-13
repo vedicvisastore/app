@@ -51,7 +51,7 @@ export default function ThemesPage() {
     trpc.admin.saveTheme.mutationOptions({
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: trpc.admin.siteConfig.queryKey() });
-        toast("Theme saved. The store shows it within 30 seconds.");
+        toast("Theme saved. The store shows it within a few seconds.");
       },
       onError: (e) => toast(e.message, "error"),
     }),
@@ -64,7 +64,7 @@ export default function ThemesPage() {
     <>
       <PageHeader
         title="Themes"
-        description="Switch the whole store's colours in one click. Products, photos and text stay the same. Saved to storage, not the database, and live within about 30 seconds."
+        description="Switch the whole store's colours in one click. Products, photos and text stay the same. Saved to storage, not the database, and live within a few seconds."
       />
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {THEMES.map((t) => {

@@ -23,7 +23,7 @@ Checked 2026-11-13: the Worker bundle is **2.07 MB gzipped**, under the 3 MB fre
    ```json
    [{ "AllowedOrigins": ["https://admin.vedicvisa.com", "https://vedicvisa.com"], "AllowedMethods": ["PUT", "GET"], "AllowedHeaders": ["Content-Type"], "MaxAgeSeconds": 3600 }]
    ```
-   Create an R2 API token (Object Read & Write, this bucket only).
+   Theme and store-text saves use the native `SITE_CONFIG_BUCKET` binding in `wrangler.jsonc`, pointing to this bucket. They do not need S3 access keys. For direct browser media uploads, create an R2 API token (Object Read & Write, this bucket only).
 3. **Worker secrets** (`npx wrangler login` first):
    ```bash
    npx wrangler secret put DATABASE_URL

@@ -1,9 +1,10 @@
 /**
  * Site look and copy: the active theme and any edited text, saved as ONE JSON file
  * (`site/config.json` in the R2 bucket; `~/.vedicvisa/site-config.json` in local dev when R2 isn't set up).
- * No database involved. Reads are cached in memory for 30 seconds, so pages never wait on storage.
+ * No database involved. Reads are cached in memory for 5 seconds, so pages never wait on storage.
  */
 import { AwsClient } from "aws4fetch";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { DEFAULT_CONTENT, mergeContent, type SiteContent } from "@/content/defaults";
 import { DEFAULT_CUSTOM, themeCss, themeTokens, THEMES, type CustomTheme } from "@/lib/themes";
 import { cached, clearCache } from "./cache";
@@ -12,6 +13,27 @@ import { env } from "./env";
 export type SiteConfig = { theme: string; customTheme: CustomTheme; content: Record<string, string>; updatedAt?: string };
 const EMPTY: SiteConfig = { theme: "vrindavan", customTheme: DEFAULT_CUSTOM, content: {} };
 const KEY = "site/config.json";
+
+// Workers can access their bound bucket directly. Theme and copy saves must not
+// depend on the separate S3 credentials used to sign browser media uploads.
+type ConfigBucket = {
+  get(key: string): Promise<{ json<T>(): Promise<T> } | null>;
+  put(key: string, value: string, options: { httpMetadata: { contentType: string } }): Promise<unknown>;
+};
+
+function boundBucket(): ConfigBucket | undefined {
+  try {
+    const { env } = getCloudflareContext();
+    return (env as typeof env & { SITE_CONFIG_BUCKET?: ConfigBucket }).SITE_CONFIG_BUCKET;
+  } catch {
+    // Standalone Node and ordinary next dev have no Worker context.
+    return undefined;
+  }
+}
+
+export function siteConfigStorage() {
+  return boundBucket() || env.r2Configured() ? "r2" : env.isProd ? "unconfigured" : "local";
+}
 
 function r2() {
   const c = env.r2();
@@ -26,6 +48,11 @@ async function localPath() {
 
 async function readRaw(): Promise<SiteConfig> {
   try {
+    const bucket = boundBucket();
+    if (bucket) {
+      const object = await bucket.get(KEY);
+      return object ? { ...EMPTY, ...(await object.json<Partial<SiteConfig>>()) } : EMPTY;
+    }
     if (env.r2Configured()) {
       const { client, url } = r2();
       const res = await client.fetch(url);
@@ -43,12 +70,16 @@ async function readRaw(): Promise<SiteConfig> {
 }
 
 export function getSiteConfig(): Promise<SiteConfig> {
-  return cached("site-config", 30_000, readRaw);
+  // 5s: a saved theme or text shows on every server within seconds; an R2 binding read is a few ms and free-tier ops are plentiful.
+  return cached("site-config", 5_000, readRaw);
 }
 
 export async function saveSiteConfig(next: SiteConfig) {
   const body = JSON.stringify({ ...next, updatedAt: new Date().toISOString() }, null, 2);
-  if (env.r2Configured()) {
+  const bucket = boundBucket();
+  if (bucket) {
+    await bucket.put(KEY, body, { httpMetadata: { contentType: "application/json" } });
+  } else if (env.r2Configured()) {
     const { client, url } = r2();
     const res = await client.fetch(url, { method: "PUT", body, headers: { "Content-Type": "application/json" } });
     if (!res.ok) throw new Error(`Couldn't save to R2 (${res.status}).`);
@@ -63,8 +94,10 @@ export async function saveSiteConfig(next: SiteConfig) {
 }
 
 /** What every page needs: merged copy and the theme CSS. */
-export async function getSite(): Promise<{ content: SiteContent; themeKey: string; themeCss: string }> {
-  const cfg = await getSiteConfig().catch(() => EMPTY);
+export async function getSite(): Promise<{ content: SiteContent; themeKey: string; themeCss: string; previewing: boolean }> {
+  const [cfg, draft] = await Promise.all([getSiteConfig().catch(() => EMPTY), import("./content-preview").then((m) => m.requestPreview())]);
   const key = cfg.theme === "custom" || THEMES.some((t) => t.key === cfg.theme) ? cfg.theme : "vrindavan";
-  return { content: cfg.content ? mergeContent(cfg.content) : DEFAULT_CONTENT, themeKey: key, themeCss: themeCss(themeTokens(key, cfg.customTheme), "html:root") };
+  // An admin previewing unsaved text in Admin → Store text sees the draft instead of the saved text.
+  const text = draft ?? cfg.content;
+  return { content: text ? mergeContent(text) : DEFAULT_CONTENT, themeKey: key, themeCss: themeCss(themeTokens(key, cfg.customTheme), "html:root"), previewing: !!draft && JSON.stringify(Object.entries(draft).sort()) !== JSON.stringify(Object.entries(cfg.content ?? {}).filter(([, v]) => v.trim()).sort()) };
 }

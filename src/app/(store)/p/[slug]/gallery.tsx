@@ -5,7 +5,7 @@ import { ProductArt } from "@/components/ui";
 import { cn, isVideo } from "@/lib/utils";
 
 /** Photos and videos for one product: swipe on phones, thumbnails and arrows on desktop. */
-export function Gallery({ images, name, seed, arch }: { images: string[]; name: string; seed: number; arch?: boolean }) {
+export function Gallery({ images, name, seed }: { images: string[]; name: string; seed: number }) {
   const [i, setI] = useState(0);
   const track = useRef<HTMLDivElement>(null);
   const many = images.length > 1;
@@ -19,10 +19,8 @@ export function Gallery({ images, name, seed, arch }: { images: string[]; name: 
 
   if (!images.length)
     return (
-      <div className={cn(arch && "arch-frame mx-auto max-w-[520px] pt-2")}>
-        <div className={cn("relative aspect-[4/5] overflow-hidden", arch ? "arch" : "rounded-[28px]")}>
-          <ProductArt name={name} seed={seed} />
-        </div>
+      <div className="relative aspect-[4/5] overflow-hidden rounded-[28px]">
+        <ProductArt name={name} seed={seed} />
       </div>
     );
 

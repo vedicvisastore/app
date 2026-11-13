@@ -62,13 +62,12 @@ export default async function ProductPage({ params }: { params: Params }) {
             ) : null}
           </ol>
         </nav></div>
-        <Gallery images={p.images} name={p.name} seed={p.id} arch={p.kind === "bundle"} />
+        <Gallery images={p.images} name={p.name} seed={p.id} />
 
         <div className="md:sticky md:top-28 md:self-start">
           <div className="flex flex-wrap gap-2">
             {p.upcoming && <Badge tone="haldi">{launchLabel(p.launchAt)}</Badge>}
             {p.saleLabel && !p.upcoming && <Badge tone="gulal">{p.saleLabel}</Badge>}
-            {p.kind === "bundle" && <Badge tone="sky">{p.components.reduce((s, c) => s + c.qty, 0)} items inside</Badge>}
           </div>
           <h1 className="mt-3 text-[length:var(--text-display-s)]">{p.name}</h1>
           {p.tagline && <p className="mt-2 text-lg text-ink-soft">{p.tagline}</p>}
@@ -114,7 +113,6 @@ export default async function ProductPage({ params }: { params: Params }) {
               .
             </p>
           )}
-          <p className="mt-6 text-xs text-ink-mute">SKU {p.sku}</p>
         </div>
       </Container>
 
@@ -125,19 +123,17 @@ export default async function ProductPage({ params }: { params: Params }) {
               {c.insideTitle}
             </h2>
             <p className="mt-2 text-ink-soft">{c.insideLede}</p>
-            <ul className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            <ul className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-5 lg:gap-x-6">
               {p.components.map((c) => (
                 <li key={c.id}>
-                  <Link href={`/p/${c.slug}`} className="group block">
-                    <div className="aspect-square overflow-hidden rounded-2xl bg-sky">
+                  <div className="group">
+                    <Link href={`/p/${c.slug}`} aria-label={c.name} className="relative block aspect-square overflow-hidden rounded-2xl bg-sky">
                       {c.image ? <Media src={c.image} alt={c.name} className="h-full w-full object-cover" /> : <ProductArt name={c.name} seed={c.id} />}
-                    </div>
-                    <p className="mt-2 text-sm font-bold group-hover:text-royal">
-                      {c.qty > 1 && `${c.qty} × `}
-                      {c.name}
+                    </Link>
+                    <p className="mt-3 text-sm leading-snug font-bold group-hover:text-royal">
+                      <Link href={`/p/${c.slug}`}>{c.qty > 1 && `${c.qty} × `}{c.name}</Link>
                     </p>
-                    <p className="text-xs text-ink-mute tabular-nums">{inr(c.price)} on its own</p>
-                  </Link>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -146,7 +142,7 @@ export default async function ProductPage({ params }: { params: Params }) {
       )}
 
       {related.length > 0 && (
-        <section className="pt-[var(--section-gap)]" aria-labelledby="related">
+        <section className="mt-[var(--section-gap)] -mb-[var(--section-gap-s)] bg-paper-2 pt-[var(--section-gap-s)] pb-[calc(var(--section-gap-s)*0.75)]" aria-labelledby="related">
           <Container>
             <h2 id="related">
               {c.relatedTitle}

@@ -3,8 +3,8 @@
 
 .home-page {
   --home-radius: 22px;
-  --home-hero-height: clamp(550px, calc(100svh - 222px), 690px);
-  --home-hero-head: clamp(3.5rem, 5.5vw, 5.25rem);
+  --home-hero-height: clamp(500px, calc(100svh - 250px), 600px);
+  --home-hero-head: clamp(3.2rem, 4.5vw, 4.5rem);
   --home-hero-field: color-mix(in oklab, var(--color-royal) 89%, var(--color-shyam));
   --home-hero-arch: color-mix(in oklab, var(--color-royal) 55%, var(--color-shyam));
   --home-hairline: color-mix(in oklab, var(--color-gold) 32%, transparent);
@@ -14,6 +14,21 @@
 .home-page :is(a, button):focus-visible { outline: 2.5px solid var(--color-focus); outline-offset: 4px; }
 .home-page :is(a, button):active { transform: translateY(1px); }
 .home-hero { padding-top: var(--space-lg); }
+.home-hero-viewport { overflow: hidden; touch-action: pan-y pinch-zoom; }
+.home-hero-track { display: flex; transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1); }
+.home-hero-slide { flex: 0 0 100%; min-width: 0; }
+.home-hero-navigation { display: flex; align-items: center; justify-content: space-between; gap: var(--space-lg); padding-top: var(--space-md); }
+.home-hero-categories { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.home-hero-categories button { min-height: 44px; padding: var(--space-xs) var(--space-md); border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--color-ink-soft); font-size: var(--text-sm); cursor: pointer; }
+.home-hero-categories button[aria-current="true"] { border-bottom-color: var(--color-gold-ink); color: var(--color-ink); }
+.home-hero-categories button:hover:not([aria-current="true"]) { background: var(--color-paper-2); color: var(--color-ink); }
+.home-hero-controls { display: flex; align-items: center; gap: var(--space-xs); }
+.home-hero-controls button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 0; background: transparent; color: var(--color-ink); cursor: pointer; }
+.home-hero-controls button:hover:enabled { background: var(--color-paper-2); }
+.home-hero-controls button:disabled { opacity: 0.35; cursor: default; }
+.home-hero-viewport:focus-visible { outline: 2.5px solid var(--color-focus); outline-offset: 4px; }
+.home-slide-japa { --home-hero-field: var(--color-peacock-deep); --home-hero-arch: var(--color-peacock); }
+.home-slide-shringar { --home-hero-field: var(--color-gulal-deep); --home-hero-arch: var(--color-gulal); }
 .home-bento {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
@@ -43,16 +58,8 @@
   bottom: -22%;
   background: var(--home-hero-arch);
 }
-.home-intro::after {
-  content: "";
-  position: absolute;
-  inset: var(--space-sm);
-  border: 1px solid var(--home-hairline);
-  border-radius: calc(var(--home-radius) - var(--space-sm) / 2);
-  pointer-events: none;
-}
-.home-intro-content { padding-block: var(--space-lg) var(--space-2xl); }
-.home-intro h1 {
+.home-intro-content { padding-block: var(--space-lg); }
+.home-intro .home-hero-title {
   max-width: 11ch;
   font-size: var(--home-hero-head);
   line-height: 1.015;
@@ -62,15 +69,13 @@
 .home-lead {
   max-width: 31ch;
   margin-top: var(--space-lg);
-  font-size: var(--text-lead);
+  font-size: var(--text-md);
   line-height: 1.5;
   color: var(--color-on-shyam);
 }
 .home-actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-xl); }
 .home-actions a { font-size: var(--text-sm); }
-.home-signature { position: absolute; inset-inline: clamp(32px, 3.7vw, 56px); bottom: var(--space-xl); display: flex; align-items: center; gap: var(--space-md); color: var(--color-gold); }
-.home-signature p { font-size: var(--text-xl); }
-.home-signature-rule { width: var(--space-xl); height: 1px; background: var(--color-gold); opacity: 0.6; }
+.home-actions .home-secondary { display: inline-flex; align-items: center; padding: 12px 8px; text-decoration: underline; text-underline-offset: 5px; }
 .home-featured { min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: var(--home-radius); background: var(--color-paper-2); }
 .home-featured-image { position: relative; display: block; flex: 1; min-height: 0; overflow: hidden; }
 .home-featured-image:focus-visible { outline: 3px solid var(--color-ink); outline-offset: -6px; box-shadow: inset 0 0 0 3px var(--color-white); }
@@ -81,47 +86,37 @@
 .home-discover { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); min-height: 0; }
 .home-story-link { position: relative; overflow: hidden; border-radius: var(--home-radius); background: var(--color-peacock); color: var(--color-white); }
 .home-story-caption { position: absolute; inset: auto 0 0; display: flex; align-items: center; justify-content: space-between; padding: var(--space-xl) var(--space-md) var(--space-md); background: linear-gradient(transparent, var(--color-shyam)); font-size: var(--text-sm); font-weight: 700; }
-.home-japa { position: relative; display: flex; flex-direction: column; justify-content: end; overflow: hidden; padding: var(--space-lg); border-radius: var(--home-radius); background: var(--color-gulal); color: var(--color-white); }
-.home-japa-word { position: absolute; right: var(--space-sm); top: var(--space-md); font-size: clamp(4rem, 6vw, 6rem); opacity: 0.16; }
-.home-japa-title { position: relative; font-family: var(--font-display); font-size: clamp(1.6rem, 2.4vw, 2.1rem); line-height: 1.1; }
+.home-japa { position: relative; display: flex; flex-direction: column; justify-content: end; overflow: hidden; padding: var(--space-lg); border-radius: var(--home-radius); background: var(--color-paper-2); color: var(--color-ink); }
+.home-japa-title { position: relative; font-family: var(--font-display); font-size: clamp(1.4rem, 2vw, 1.8rem); line-height: 1.1; }
 .home-japa-action { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs); margin-top: var(--space-md); font-size: var(--text-sm); }
 .home-japa-action > span { text-decoration: underline; text-underline-offset: 4px; }
 .home-japa-action svg, .home-story-caption svg { flex-shrink: 0; transition: transform var(--dur-short) var(--ease-out); }
 .home-japa:hover svg, .home-story-link:hover svg { transform: translate(2px, -2px); }
-.home-delivery { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-md) var(--space-lg); margin: 0; padding: var(--space-lg) 0; border-bottom: 1px solid var(--color-rule); list-style: none; color: var(--color-ink-soft); }
-.home-delivery li { display: flex; align-items: center; gap: var(--space-sm); font-size: var(--text-sm); }
-.home-delivery svg { width: 18px; height: 18px; stroke-width: 1.4; color: var(--color-gold-ink); flex-shrink: 0; }
 .home-boxes { padding-top: var(--home-section-space); }
 .home-section-heading h2 { max-width: 22ch; }
 .home-section-heading > p { max-width: 36ch; line-height: 1.7; }
 .home-box-rail { margin-top: var(--space-xl); }
 .home-box-rail article > div { padding-top: var(--space-lg); }
-.home-box-rail .arch-frame { transition: transform var(--dur-short) var(--ease-out); }
-.home-box-rail .arch-frame:hover { transform: translateY(-4px); }
-.home-box-rail .arch-frame::after { background: var(--color-gold-ink); opacity: 0.65; }
-.home-inside { margin-top: var(--home-section-space); padding-block: var(--home-section-space); background: var(--color-paper-2); }
-.home-inside h2 { max-width: 15ch; }
-.home-inside ol { border-top: 1px solid var(--color-rule); }
-.home-inside li { padding-block: var(--space-md); }
-.home-inside li > a { font-size: var(--text-md); }
-.home-philosophy { position: relative; overflow: hidden; }
+.home-philosophy { position: relative; margin-top: var(--space-2xl); padding-block: var(--space-2xl); overflow: hidden; }
 .home-philosophy::before, .home-philosophy::after { content: ""; position: absolute; inset: var(--space-sm) 0 auto; height: 1px; background: var(--home-hairline); }
 .home-philosophy::after { inset: auto 0 var(--space-sm); }
-.home-philosophy-grid { padding-block: var(--home-section-space); }
-.home-philosophy #shloka { font-size: clamp(3rem, 6vw, 5.7rem); line-height: 1.2; }
-.home-philosophy #shloka + p { max-width: 28ch; margin-top: var(--space-lg); font-size: clamp(2rem, 3.6vw, 3.2rem); }
-.home-philosophy #shloka + p + p { max-width: 43ch; line-height: 1.75; }
-.home-philosophy .arch-frame { max-width: 300px; }
+.home-philosophy-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(40px, 6vw, 96px); align-items: center; }
+.home-philosophy-art { padding: var(--space-md); }
+.home-philosophy .arch-frame { max-width: 400px; margin-inline: auto; }
+.home-philosophy-copy { padding-block: var(--space-lg); }
+.home-philosophy #shloka { max-width: none; font-size: clamp(2.5rem, 4.7vw, 4.6rem); line-height: 1.2; color: var(--color-gold); }
+.home-philosophy-translation { max-width: 20ch; margin-top: var(--space-lg); font-size: clamp(2rem, 3.4vw, 3.2rem); line-height: 1.1; color: var(--color-on-shyam); }
+.home-philosophy-body { max-width: 46ch; margin-top: var(--space-lg); line-height: 1.75; color: var(--color-on-shyam-2); }
+.home-philosophy-action { margin-top: var(--space-xl); color: var(--color-gold); }
 .home-essentials { padding-top: var(--home-section-space); }
 .home-essentials h2 { max-width: 21ch; }
 .home-essentials-grid { margin-top: var(--space-xl); }
 .home-page section[aria-labelledby="sets"] { margin-top: var(--home-section-space); padding-block: var(--home-section-space); }
 .home-page section[aria-labelledby="sets"] h2 { max-width: 17ch; }
 .home-follow { padding-top: var(--home-section-space); }
-.home-social-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xl); margin-top: var(--space-xl); }
+.home-social-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--space-xl); margin-top: var(--space-xl); }
 .home-social-link { position: relative; isolation: isolate; display: flex; align-items: center; gap: var(--space-lg); min-width: 0; padding-block: var(--space-xl); border-top: 1px solid var(--color-rule); border-bottom: 1px solid var(--color-rule); color: var(--color-ink); }
 .home-social-icon { flex-shrink: 0; width: 48px; height: 48px; }
-.home-social-word { position: absolute; right: 0; bottom: var(--space-xs); z-index: -1; font-size: clamp(4rem, 6vw, 6rem); color: var(--color-paper-3); }
 .home-social-name { display: block; font-size: var(--text-title); line-height: 1.2; }
 .home-social-action { display: inline-block; margin-top: var(--space-xs); font-size: var(--text-sm); text-decoration: underline; text-decoration-color: var(--color-gold-ink); text-underline-offset: 5px; }
 .home-social-link:hover .home-social-action { color: var(--color-royal); text-decoration-color: currentColor; }
@@ -136,40 +131,40 @@
 @media (max-width: 1023px) {
   .home-page { --home-radius: 20px; }
   .home-bento { height: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; }
-  .home-intro { grid-column: 1 / -1; grid-row: auto; min-height: 490px; padding: var(--space-xl); }
-  .home-intro h1 { max-width: 15ch; font-size: clamp(3.5rem, 7.5vw, 5rem); }
-  .home-intro-content { padding-block: 0 var(--space-2xl); }
+  .home-intro { grid-column: 1 / -1; grid-row: auto; min-height: 340px; padding: var(--space-xl); }
+  .home-intro .home-hero-title { max-width: 15ch; font-size: clamp(3rem, 6vw, 4rem); }
+  .home-intro-content { padding-block: var(--space-md); }
   .home-featured { min-height: 360px; }
   .home-discover { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(2, minmax(0, 1fr)); }
   .home-japa-title { font-size: var(--text-2xl); }
-  .home-japa-word { top: 0; font-size: 5rem; }
   .home-japa-action { margin-top: var(--space-xs); }
-  .home-delivery { justify-content: flex-start; gap: var(--space-md) var(--space-xl); }
-  .home-philosophy .arch-frame { margin-inline: 0; max-width: 280px; }
+  .home-philosophy-grid { grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); gap: var(--space-lg); }
 }
 @media (max-width: 639px) {
+  .home-hero-navigation { flex-wrap: wrap; gap: var(--space-xs); }
+  .home-hero-categories { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; gap: var(--space-2xs); }
+  .home-hero-categories button { padding-inline: var(--space-2xs); font-size: var(--text-xs); line-height: 1.25; }
+  .home-hero-controls { margin-left: auto; }
   .home-hero { padding-top: var(--space-md); }
-  .home-intro { min-height: 450px; padding: var(--space-lg); }
-  .home-intro::after { inset: var(--space-xs); border-radius: calc(var(--home-radius) - var(--space-2xs)); }
-  .home-intro h1 { font-size: clamp(2.8rem, 11.7vw, 4rem); max-width: 12ch; }
+  .home-intro { min-height: 320px; padding: var(--space-lg); }
+  .home-intro .home-hero-title { font-size: clamp(2.6rem, 10vw, 3.4rem); max-width: 12ch; }
   .home-lead { margin-top: var(--space-lg); font-size: var(--text-md); max-width: 28ch; }
   .home-actions { gap: var(--space-xs); margin-top: var(--space-lg); }
   .home-actions a { padding-inline: var(--space-md); min-height: 48px; height: auto; }
-  .home-signature { inset-inline: var(--space-lg); bottom: var(--space-lg); gap: var(--space-sm); }
-  .home-signature p { font-size: var(--text-lg); }
-  .home-featured { grid-column: 1 / -1; min-height: 360px; }
-  .home-featured-image { min-height: 275px; }
+  .home-featured { grid-column: 1 / -1; min-height: 280px; }
+  .home-featured-image { min-height: 205px; }
   .home-featured-caption { padding: var(--space-md); }
-  .home-discover { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; min-height: 190px; }
+  .home-discover { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; min-height: 145px; }
   .home-japa { padding: var(--space-md); }
   .home-japa-title { font-size: var(--text-xl); }
-  .home-delivery { display: grid; gap: var(--space-sm); padding-block: var(--space-lg); }
-  .home-delivery li { font-size: var(--text-sm); }
   .home-page h2 { font-size: clamp(2rem, 8.5vw, 2.6rem); }
   .home-box-rail { gap: var(--space-lg); }
   .home-box-rail > div { width: 65%; }
   .home-philosophy #shloka { font-size: clamp(2.4rem, 10vw, 3.4rem); }
-  .home-philosophy #shloka + p { font-size: 2rem; }
+  .home-philosophy-grid { grid-template-columns: minmax(0, 1fr); }
+  .home-philosophy-art { max-width: 320px; width: 85%; margin-inline: auto; }
+  .home-philosophy-translation { font-size: 2rem; }
+  .home-philosophy { padding-block: var(--space-xl); }
   .home-social-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .home-social-link { padding-block: var(--space-lg); }
   .home-social-link + .home-social-link { border-top: 0; }

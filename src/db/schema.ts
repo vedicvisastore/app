@@ -319,3 +319,47 @@ export const pincodeGeo = pgTable("pincode_geo", {
   district: text("district").notNull().default(""),
   state: text("state").notNull().default(""),
 });
+
+/** Accent colours a festival page can use. Theme tokens, so every admin theme still applies. */
+export const FESTIVAL_ACCENTS = ["gulal", "gold", "royal", "peacock", "mor"] as const;
+export type FestivalAccent = (typeof FESTIVAL_ACCENTS)[number];
+
+/**
+ * Custom pages ("festivals" table name kept): a festival or any collection, e.g. Holi 2027 or Corporate gifting, at /c/<slug> with hand-picked products.
+ * At most MAX_MENU_PAGES of them can be in the store menu.
+ * Visible in the store between showFrom and showUntil while active (see src/lib/festival-status.ts).
+ */
+export const festivals = pgTable("festivals", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  /** Short line under the name, e.g. "Colours, gulal and Radha-Krishna bhakti". */
+  tagline: text("tagline"),
+  description: text("description"),
+  /** The festival day itself, shown as "Holi is on 4 March". */
+  festivalDate: timestamp("festival_date", { withTimezone: true }),
+  showFrom: timestamp("show_from", { withTimezone: true }),
+  showUntil: timestamp("show_until", { withTimezone: true }),
+  image: text("image"),
+  accent: text("accent").$type<FestivalAccent>().notNull().default("gulal"),
+  showInMenu: boolean("show_in_menu").notNull().default(true),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const festivalProducts = pgTable(
+  "festival_products",
+  {
+    festivalId: integer("festival_id")
+      .notNull()
+      .references(() => festivals.id, { onDelete: "cascade" }),
+    productId: integer("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.festivalId, t.productId] })],
+);
+
+export type Festival = typeof festivals.$inferSelect;

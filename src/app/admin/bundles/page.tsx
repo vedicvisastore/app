@@ -1,18 +1,20 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Grid3x3, LayoutList, Plus } from "lucide-react";
+import { Check, ChevronDown, Plus } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useState } from "react";
 import { ButtonLink, Media, ProductArt, Spinner } from "@/components/ui";
 import { useTRPC } from "@/lib/trpc/client";
 import { cn, inr } from "@/lib/utils";
-import { Card, NumberCell, PageHeader, useToast } from "../_ui";
+import { Card, NumberCell, PageHeader, Tabs, useToast } from "../_ui";
 
 export default function BundlesPage() {
   const trpc = useTRPC();
   const qc = useQueryClient();
   const toast = useToast();
   const [view, setView] = useState<"cards" | "matrix">("cards");
+  const [group, setGroup] = useState("all");
+  const [open, setOpen] = useState<number | null>(null);
   const bundles = useQuery(trpc.admin.products.queryOptions({ kind: "bundle" }));
   const singles = useQuery({ ...trpc.admin.products.queryOptions({ kind: "single" }), enabled: view === "matrix" });
   const quick = useMutation(
@@ -20,76 +22,138 @@ export default function BundlesPage() {
   );
 
   const list = bundles.data ?? [];
-  const groups = [...new Set(list.map((b) => b.bundleGroup ?? "Other bundles"))];
+  const groups = [...new Set(list.map((b) => b.bundleGroup ?? "Other sets"))];
+  const shown = list.filter((b) => group === "all" || (b.bundleGroup ?? "Other sets") === group);
 
   return (
     <>
       <PageHeader
-        title="Boxes & bundles"
-        description="Each box is a club of products. Cost includes packing and delivery items; “item value” is what the customer-facing items would cost separately."
-        actions={
-          <>
-            <div className="flex rounded-full border border-line bg-paper p-0.5">
-              <button onClick={() => setView("cards")} className={cn("flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-bold", view === "cards" ? "bg-ink text-white" : "text-ink-soft")}><LayoutList className="size-4" /> Boxes</button>
-              <button onClick={() => setView("matrix")} className={cn("flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-bold", view === "matrix" ? "bg-ink text-white" : "text-ink-soft")}><Grid3x3 className="size-4" /> Matrix</button>
-            </div>
-            <ButtonLink href="/admin/products/new?kind=bundle" size="sm"><Plus className="size-4" /> New box</ButtonLink>
-          </>
-        }
+        title="Boxes & sets"
+        description="Every box and set, with what it costs you and what you earn. Tap one to see what’s inside."
+        actions={<ButtonLink href="/admin/products/new?kind=bundle" size="sm"><Plus className="size-4" /> New box</ButtonLink>}
       />
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <Tabs
+          value={view}
+          onChange={setView}
+          items={[
+            { value: "cards", label: "List" },
+            { value: "matrix", label: "Compare contents" },
+          ]}
+        />
+      </div>
       {bundles.isLoading && <Spinner className="text-ink-mute" />}
 
-      {view === "cards" &&
-        groups.map((g) => (
-          <section key={g} className="mb-10">
-            <h2 className="mb-3 font-sans text-lg font-bold">{g}</h2>
-            <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-              {list
-                .filter((b) => (b.bundleGroup ?? "Other bundles") === g)
-                .map((b) => {
-                  const profit = b.price - b.componentCost;
-                  const margin = b.price ? Math.round((profit / b.price) * 100) : 0;
-                  const visible = b.components.filter((c) => c.visibility === "public");
-                  const internal = b.components.filter((c) => c.visibility !== "public");
-                  return (
-                    <Card key={b.id} className="flex flex-col p-5">
-                      <div className="flex gap-4">
-                        <div className="h-20 w-16 shrink-0 overflow-hidden rounded-xl bg-sky">{b.images[0] ? <Media src={b.images[0]} alt="" className="h-full w-full object-cover" /> : <ProductArt name={b.name} seed={b.id} className="[&_span]:text-xl" />}</div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <Link href={`/admin/products/${b.id}`} className="font-display text-2xl leading-tight hover:text-royal">{b.name}</Link>
-                            <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-bold", b.visibility === "public" ? "bg-mor-soft text-mor" : "bg-line text-ink-soft")}>{b.visibility === "public" ? "In store" : "Hidden"}</span>
+      {view === "cards" && (
+        <>
+          <div className="no-scrollbar mb-4 flex gap-2 overflow-x-auto">
+            {[["all", `All (${list.length})`] as const, ...groups.map((g) => [g, `${g} (${list.filter((b) => (b.bundleGroup ?? "Other sets") === g).length})`] as const)].map(([key, label]) => (
+              <button key={key} onClick={() => setGroup(key)} className={cn("shrink-0 rounded-full border px-4 py-2 text-sm whitespace-nowrap", group === key ? "border-ink bg-ink text-white" : "border-line text-ink-soft hover:border-ink")}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <Card className="divide-y divide-line overflow-hidden">
+            <div className="hidden grid-cols-[minmax(0,2.2fr)_repeat(3,minmax(0,1fr))_2rem] gap-3 bg-sky/40 px-4 py-2.5 text-xs font-bold text-ink-soft md:grid">
+              <span>Box</span>
+              <span className="text-right">Price</span>
+              <span className="text-right">You earn</span>
+              <span className="text-right">Can pack</span>
+              <span />
+            </div>
+            {shown.map((b) => {
+              const profit = b.price - b.componentCost;
+              const margin = b.price ? Math.round((profit / b.price) * 100) : 0;
+              const visible = b.components.filter((c) => c.visibility === "public");
+              const internal = b.components.filter((c) => c.visibility !== "public");
+              const isOpen = open === b.id;
+              return (
+                <div key={b.id}>
+                  <button
+                    onClick={() => setOpen(isOpen ? null : b.id)}
+                    aria-expanded={isOpen}
+                    className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left hover:bg-sky/30 md:grid-cols-[minmax(0,2.2fr)_repeat(3,minmax(0,1fr))_2rem]"
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className="h-12 w-10 shrink-0 overflow-hidden rounded-lg bg-sky">
+                        {b.images[0] ? <Media src={b.images[0]} alt="" className="h-full w-full object-cover" /> : <ProductArt name={b.name} seed={b.id} />}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate font-bold">{b.name}</span>
+                        <span className="flex flex-wrap items-center gap-x-2 text-xs text-ink-mute">
+                          <span>{visible.length} items</span>
+                          {b.visibility !== "public" && <span className="rounded-full bg-line px-1.5 text-ink-soft">Hidden</span>}
+                          {b.pinRank != null && <span className="rounded-full bg-haldi-soft px-1.5 text-gold-ink">Pinned #{b.pinRank}</span>}
+                        </span>
+                      </span>
+                    </span>
+                    <span className="text-right text-sm tabular-nums md:hidden">
+                      <b>{inr(b.price)}</b>
+                      <span className={cn("block text-xs", margin < 50 ? "text-gulal" : "text-mor")}>earn {inr(profit)}</span>
+                    </span>
+                    <span className="hidden text-right tabular-nums md:block">{inr(b.price)}</span>
+                    <span className={cn("hidden text-right tabular-nums md:block", margin < 50 ? "text-gulal" : "text-mor")}>
+                      {inr(profit)} <span className="text-xs">({margin}%)</span>
+                    </span>
+                    <span className={cn("hidden text-right tabular-nums md:block", b.available === 0 && "font-bold text-gulal")}>{b.available ?? "No limit"}</span>
+                    <ChevronDown className={cn("hidden size-4 justify-self-end text-ink-mute transition-transform md:block", isOpen && "rotate-180")} aria-hidden />
+                  </button>
+
+                  {isOpen && (
+                    <div className="space-y-5 bg-sky/20 px-4 pt-2 pb-5">
+                      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {[
+                          ["Your cost", inr(b.componentCost), "Items + packing"],
+                          ["Worth if bought separately", inr(b.componentValue), "Customer-facing items"],
+                          ["Price", inr(b.price), b.mrp ? `MRP ${inr(b.mrp)}` : "No MRP"],
+                          ["Can pack now", String(b.available ?? "No limit"), "From current stock"],
+                        ].map(([k, v, h]) => (
+                          <div key={k} className="rounded-xl bg-paper p-3">
+                            <dt className="text-xs text-ink-soft">{k}</dt>
+                            <dd className="font-bold tabular-nums">{v}</dd>
+                            <dd className="text-xs text-ink-mute">{h}</dd>
                           </div>
-                          <p className="text-xs text-ink-mute">{b.sku}, {visible.length} items + {internal.length} packing/delivery</p>
+                        ))}
+                      </dl>
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        <div>
+                          <p className="label">What the customer gets ({visible.length})</p>
+                          <ul className="divide-y divide-line rounded-xl bg-paper text-sm">
+                            {visible.map((c) => (
+                              <li key={c.productId} className="flex justify-between px-3 py-2"><span>{c.name}</span><span className="text-ink-mute">× {c.qty}</span></li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="label">Packing and delivery ({internal.length})</p>
+                          <ul className="divide-y divide-line rounded-xl bg-paper text-sm text-ink-soft">
+                            {internal.map((c) => (
+                              <li key={c.productId} className="flex justify-between px-3 py-2"><span>{c.name}</span><span className="text-ink-mute">× {c.qty}</span></li>
+                            ))}
+                            {internal.length === 0 && <li className="px-3 py-2 text-ink-mute">None</li>}
+                          </ul>
                         </div>
                       </div>
-                      <dl className="mt-4 grid grid-cols-4 gap-2 rounded-xl bg-sky/60 p-3 text-center text-sm">
-                        <div><dt className="text-xs text-ink-soft">Cost</dt><dd className="font-bold tabular-nums">{inr(b.componentCost)}</dd></div>
-                        <div><dt className="text-xs text-ink-soft">Item value</dt><dd className="font-bold tabular-nums">{inr(b.componentValue)}</dd></div>
-                        <div><dt className="text-xs text-ink-soft">Price{b.mrp ? ` / MRP` : ""}</dt><dd className="font-bold tabular-nums">{inr(b.price)}{b.mrp && <s className="ml-1 text-xs font-normal text-ink-mute">{inr(b.mrp)}</s>}</dd></div>
-                        <div><dt className="text-xs text-ink-soft">Profit</dt><dd className={cn("font-bold tabular-nums", margin < 50 ? "text-gulal" : "text-mor")}>{inr(profit)} <span className="text-xs">({margin}%)</span></dd></div>
-                      </dl>
-                      <ul className="mt-4 flex flex-wrap gap-1.5">
-                        {visible.map((c) => (
-                          <li key={c.productId} className="rounded-full border border-line px-2.5 py-0.5 text-xs">{c.qty > 1 && `${c.qty}× `}{c.name}</li>
-                        ))}
-                        {internal.map((c) => (
-                          <li key={c.productId} className="rounded-full bg-line/60 px-2.5 py-0.5 text-xs text-ink-soft">{c.qty > 1 && `${c.qty}× `}{c.name}</li>
-                        ))}
-                      </ul>
-                      <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-4 text-sm">
-                        <span className="flex items-center gap-2 text-ink-soft">
-                          Can pack: <b className={cn(b.available === 0 ? "text-gulal" : "text-ink")}>{b.available ?? "∞"}</b>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <span className="flex items-center gap-2 text-sm text-ink-soft">
+                          Pin to top of shop (1 = first)
+                          <NumberCell value={b.pinRank} width="w-14" placeholder="—" onSave={(v) => quick.mutate({ id: b.id, pinRank: v && v > 0 ? v : null })} />
                         </span>
-                        <span className="flex items-center gap-2 text-ink-soft">Pin <NumberCell value={b.pinRank} width="w-12" placeholder="—" onSave={(v) => quick.mutate({ id: b.id, pinRank: v && v > 0 ? v : null })} /></span>
-                        <Link href={`/admin/products/${b.id}`} className="font-bold text-royal">Edit box</Link>
+                        <div className="flex gap-2">
+                          <ButtonLink href={`/admin/analytics/products/${b.id}`} size="sm" variant="outline">See sales</ButtonLink>
+                          <ButtonLink href={`/admin/products/${b.id}`} size="sm">Edit box</ButtonLink>
+                        </div>
                       </div>
-                    </Card>
-                  );
-                })}
-            </div>
-          </section>
-        ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {!bundles.isLoading && shown.length === 0 && <p className="px-4 py-10 text-center text-sm text-ink-mute">No boxes here yet.</p>}
+          </Card>
+        </>
+      )}
 
       {view === "matrix" && (
         <Card className="overflow-x-auto">

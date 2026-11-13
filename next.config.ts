@@ -8,6 +8,13 @@ import type { NextConfig } from "next";
  * Done with config rewrites (no proxy/middleware) so it runs fine on Cloudflare Workers.
  */
 const adminHost = process.env.ADMIN_HOST;
+const siteOrigin = (() => {
+  try {
+    return process.env.NEXT_PUBLIC_SITE_URL ? new URL(process.env.NEXT_PUBLIC_SITE_URL).origin : "";
+  } catch {
+    return "";
+  }
+})();
 const SKIP = "admin|api|login|_next|brand|uploads|favicon\\.ico";
 
 const isDev = process.env.NODE_ENV !== "production";
@@ -19,8 +26,10 @@ const csp = [
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   `connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://*.r2.cloudflarestorage.com${isDev ? " ws: http://localhost:*" : ""}`,
-  "frame-src https://api.razorpay.com https://checkout.razorpay.com",
-  "frame-ancestors 'none'",
+  // 'self' + the store's address: Admin → Store text frames the storefront for its live preview.
+  `frame-src 'self'${siteOrigin ? ` ${siteOrigin}` : ""} https://api.razorpay.com https://checkout.razorpay.com`,
+  // Only our own admin may frame the store (Admin → Store text live preview).
+  `frame-ancestors 'self'${adminHost ? ` https://${adminHost}` : ""}`,
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
@@ -32,7 +41,7 @@ const csp = [
 const securityHeaders = [
   { key: "Content-Security-Policy", value: csp },
   { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" }, // CSP frame-ancestors above is what modern browsers use
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(self \"https://api.razorpay.com\")" },
   ...(isDev ? [] : [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }]),

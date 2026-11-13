@@ -5,6 +5,9 @@ import {
   bundleItems,
   categories,
   discounts,
+  FESTIVAL_ACCENTS,
+  festivalProducts,
+  festivals,
   orderEvents,
   orderItems,
   orders,
@@ -16,19 +19,25 @@ import {
   type OrderStatus,
 } from "@/db/schema";
 import { importSheet } from "@/lib/excel-apply";
+import { festivalState } from "@/lib/festival-status";
+import { safeRibbonHref } from "@/lib/settings-defaults";
 import { slugify } from "@/lib/utils";
 import { availability } from "../catalog";
 import { env } from "../env";
 import { nextStates } from "@/lib/order-machine";
 import { CONTENT_KEYS } from "@/content/defaults";
 import { THEMES } from "@/lib/themes";
-import { getSiteConfig, saveSiteConfig } from "../site-config";
+import { getSiteConfig, saveSiteConfig, siteConfigStorage } from "../site-config";
 import { transitionOrder } from "../order-transition";
 import { getSettings, saveSettings } from "../settings";
+import { productSalesDetail, productSalesTable } from "../product-analytics";
+import { clearPreviewCookie, encodePreview, previewCookie } from "../content-preview";
 import { moveStock, setStock } from "../stock";
 import { ALLOWED_MEDIA, deleteMedia, presignUpload } from "../storage";
-import { adminProcedure, router } from "../trpc";
+import { adminProcedure, protectedProcedure, router } from "../trpc";
 
+/** Custom pages that can sit in the store menu at once (keeps the menu short). */
+const MAX_MENU_PAGES = 2;
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 const STATUSES = ["pending_payment", "paid", "packed", "shipped", "delivered", "cancelled", "refunded"] as const;
 
@@ -201,6 +210,12 @@ export const adminRouter = router({
   }),
 
   // ── Analytics: where orders come from ──────────────────
+  productAnalytics: adminProcedure.input(z.object({ days: z.number().int().min(0).max(3650) })).query(({ ctx, input }) => productSalesTable(ctx.db, input.days)),
+  productAnalyticsDetail: adminProcedure.input(z.object({ id: z.number().int(), days: z.number().int().min(0).max(3650) })).query(async ({ ctx, input }) => {
+    const d = await productSalesDetail(ctx.db, input.id, input.days);
+    if (!d) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+    return d;
+  }),
   geoAnalytics: adminProcedure.input(z.object({ days: z.number().int().min(0).max(3650) })).query(async ({ ctx, input }) => {
     const since = input.days ? new Date(Date.now() - input.days * 864e5) : null;
     const rows = await ctx.db
@@ -253,7 +268,7 @@ export const adminRouter = router({
   // ── Look and copy (saved as one JSON file in R2, not the database) ──
   siteConfig: adminProcedure.query(async () => {
     const cfg = await getSiteConfig();
-    return { theme: cfg.theme, customTheme: cfg.customTheme, content: cfg.content, updatedAt: cfg.updatedAt ?? null, storage: env.r2Configured() ? "r2" : "local" };
+    return { theme: cfg.theme, customTheme: cfg.customTheme, content: cfg.content, updatedAt: cfg.updatedAt ?? null, storage: siteConfigStorage() };
   }),
   saveTheme: adminProcedure
     .input(
@@ -268,6 +283,19 @@ export const adminRouter = router({
       await saveSiteConfig({ ...cfg, theme: input.theme, customTheme: input.customTheme ?? cfg.customTheme });
       return { ok: true };
     }),
+  /** Live preview: unsaved text goes into a short-lived cookie that only admins' page views honour. */
+  // protectedProcedure + inline admin check: adminProcedure would clear the catalogue cache on every keystroke.
+  previewContent: protectedProcedure.input(z.object({ content: z.record(z.string(), z.string().max(600)) })).mutation(({ ctx, input }) => {
+    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admins only." });
+    const value = encodePreview(input.content);
+    if (!value) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Too much unsaved text to preview. Save first, then keep editing." });
+    ctx.setCookie(previewCookie(value));
+    return { ok: true };
+  }),
+  endPreview: protectedProcedure.mutation(({ ctx }) => {
+    ctx.setCookie(clearPreviewCookie());
+    return { ok: true };
+  }),
   saveContent: adminProcedure
     .input(z.object({ content: z.record(z.string(), z.string().max(600)) }))
     .mutation(async ({ input }) => {
@@ -490,6 +518,102 @@ export const adminRouter = router({
     return { ok: true };
   }),
 
+  // ── Festivals ──────────────────────────────────────────
+  festivals: adminProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({ f: festivals, count: count(festivalProducts.productId) })
+      .from(festivals)
+      .leftJoin(festivalProducts, eq(festivalProducts.festivalId, festivals.id))
+      .groupBy(festivals.id)
+      .orderBy(festivals.sortOrder, festivals.festivalDate);
+    return rows.map(({ f, count }) => ({ ...f, productCount: count, state: festivalState(f) }));
+  }),
+  festival: adminProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
+    const [f] = await ctx.db.select().from(festivals).where(eq(festivals.id, input.id)).limit(1);
+    if (!f) throw new TRPCError({ code: "NOT_FOUND", message: "Page not found" });
+    const links = await ctx.db.select().from(festivalProducts).where(eq(festivalProducts.festivalId, f.id)).orderBy(festivalProducts.sortOrder);
+    return { ...f, productIds: links.map((l) => l.productId) };
+  }),
+  /** Light product list for pickers (festivals, etc.). */
+  productPicker: adminProcedure.query(({ ctx }) =>
+    ctx.db
+      .select({ id: products.id, name: products.name, kind: products.kind, visibility: products.visibility, image: sql<string | null>`${products.images}->>0`, price: products.price })
+      .from(products)
+      .where(notInArray(products.visibility, ["internal"]))
+      .orderBy(products.name),
+  ),
+  saveFestival: adminProcedure
+    .input(
+      z.object({
+        id: z.number().optional(),
+        name: z.string().trim().min(2, "Give the page a name").max(60),
+        slug: z.string().trim().max(60).optional(),
+        tagline: z.string().trim().max(140).nullable(),
+        description: z.string().trim().max(1200).nullable(),
+        festivalDate: z.date().nullable(),
+        showFrom: z.date().nullable(),
+        showUntil: z.date().nullable(),
+        image: z.string().trim().max(500).nullable(),
+        accent: z.enum(FESTIVAL_ACCENTS),
+        showInMenu: z.boolean(),
+        active: z.boolean(),
+        sortOrder: z.number().int().min(0).max(999),
+        productIds: z.array(z.number().int()).max(200),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, productIds, slug: rawSlug, ...data } = input;
+      if (data.showFrom && data.showUntil && data.showUntil <= data.showFrom)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "“Hide after” must be later than “Show from”." });
+      if (data.image && !/^(https:\/\/|\/)/.test(data.image)) throw new TRPCError({ code: "BAD_REQUEST", message: "Banner must be an uploaded image." });
+      const slug = slugify(rawSlug || data.name);
+      if (!slug) throw new TRPCError({ code: "BAD_REQUEST", message: "Give the page a name with letters." });
+      const [clash] = await ctx.db.select({ id: festivals.id }).from(festivals).where(eq(festivals.slug, slug)).limit(1);
+      if (clash && clash.id !== id) throw new TRPCError({ code: "CONFLICT", message: `Another page already uses the link /c/${slug}.` });
+      if (data.showInMenu) {
+        const others = await ctx.db.select({ id: festivals.id, name: festivals.name }).from(festivals).where(and(eq(festivals.showInMenu, true), eq(festivals.active, true)));
+        const inMenu = others.filter((o) => o.id !== id);
+        if (inMenu.length >= MAX_MENU_PAGES)
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Only ${MAX_MENU_PAGES} pages fit in the store menu. Turn off “Show in the store menu” on ${inMenu.map((o) => o.name).join(" or ")} first.` });
+      }
+      const unique = [...new Set(productIds)];
+      return ctx.db.transaction(async (tx) => {
+        let fid = id;
+        if (fid) {
+          const r = await tx.update(festivals).set({ ...data, slug }).where(eq(festivals.id, fid)).returning({ id: festivals.id });
+          if (!r.length) throw new TRPCError({ code: "NOT_FOUND", message: "Page not found" });
+        } else {
+          const [r] = await tx.insert(festivals).values({ ...data, slug }).returning({ id: festivals.id });
+          fid = r.id;
+        }
+        await tx.delete(festivalProducts).where(eq(festivalProducts.festivalId, fid));
+        if (unique.length) await tx.insert(festivalProducts).values(unique.map((productId, i) => ({ festivalId: fid!, productId, sortOrder: i })));
+        return { id: fid, slug };
+      });
+    }),
+  deleteFestival: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+    await ctx.db.delete(festivals).where(eq(festivals.id, input.id));
+    return { ok: true };
+  }),
+
+  // ── Top ribbon ────────────────────────────────────────
+  saveRibbon: adminProcedure
+    .input(
+      z.object({
+        items: z.array(z.object({ text: z.string().trim().min(1).max(120), href: z.string().trim().max(300).optional() })).max(12),
+        seconds: z.number().int().min(10).max(120),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const ribbon = input.items.map((i) => {
+        const href = safeRibbonHref(i.href);
+        if (i.href?.trim() && !href) throw new TRPCError({ code: "BAD_REQUEST", message: `Link “${i.href}” must start with / (a store page) or https://` });
+        return href ? { text: i.text, href } : { text: i.text };
+      });
+      await saveSettings(ctx.db, { ribbon, ribbonSeconds: input.seconds, announcement: ribbon.map((r) => r.text).join(" · ") });
+      return { ok: true };
+    }),
+
   // ── Settings & import ──────────────────────────────────
   settings: adminProcedure.query(async ({ ctx }) => ({
     ...(await getSettings(ctx.db)),
@@ -506,12 +630,13 @@ export const adminRouter = router({
       z.object({
         shippingFee: z.number().int().min(0),
         freeShippingThreshold: z.number().int().min(0),
-        announcement: z.string().max(200),
+        announcement: z.string().max(200).optional(),
         deliveryDaysMin: z.number().int().min(1).max(30),
         deliveryDaysMax: z.number().int().min(1).max(45),
         supportEmail: z.string().max(120),
         supportPhone: z.string().max(20),
         instagram: z.string().max(200),
+        creatorInstagram: z.string().max(200).optional(),
         youtube: z.string().max(200),
       }),
     )

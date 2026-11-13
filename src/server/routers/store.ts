@@ -3,7 +3,8 @@ import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { addresses, orderEvents, orderItems, orders, users } from "@/db/schema";
 import { clearSessionCookie, createSession, destroySession, requestOtp, sessionCookie, verifyOtp } from "../auth";
-import { filterProducts, listStoreProducts, productDetail, storeCategories } from "../catalog";
+import { filterProducts, listStoreProducts, liveDiscounts, productDetail, storeCategories } from "../catalog";
+import { festivalPage, liveFestivals } from "../festivals";
 import { env } from "../env";
 import { enforce, LIMITS } from "../rate-limit";
 import { googleConfigured } from "../google";
@@ -92,6 +93,24 @@ export const catalogRouter = router({
   categories: publicProcedure.query(({ ctx }) => storeCategories(ctx.db)),
   /** A box with its contents for the home page (doesn't count as a product view). */
   spotlight: publicProcedure.input(z.object({ slug: z.string() })).query(({ ctx, input }) => productDetail(ctx.db, input.slug, false)),
+  /** Live custom pages (menu + /c/<slug>). */
+  festivals: publicProcedure.query(({ ctx }) => liveFestivals(ctx.db)),
+  festival: publicProcedure.input(z.object({ slug: z.string().max(80) })).query(async ({ ctx, input }) => {
+    const f = await festivalPage(ctx.db, input.slug);
+    if (!f) throw new TRPCError({ code: "NOT_FOUND", message: "Festival not found" });
+    return f;
+  }),
+  /** Deals page: products selling below their struck price, plus cart offers that need no code. */
+  deals: publicProcedure.query(async ({ ctx }) => {
+    const [all, discs] = await Promise.all([listStoreProducts(ctx.db), liveDiscounts(ctx.db)]);
+    const products = all
+      .filter((p) => p.mrp && p.mrp > p.price && !p.upcoming)
+      .sort((a, b) => (b.mrp! - b.price) / b.mrp! - (a.mrp! - a.price) / a.mrp!); // biggest % off first
+    const offers = discs
+      .filter((d) => d.kind === "auto_cart")
+      .map((d) => ({ id: d.id, name: d.name, type: d.type, value: d.value, minSubtotal: d.minSubtotal, maxDiscount: d.maxDiscount, endsAt: d.endsAt }));
+    return { products, offers };
+  }),
   settings: publicProcedure.query(async ({ ctx }) => {
     const s = await getSettings(ctx.db);
     return s;
@@ -169,6 +188,34 @@ export const accountRouter = router({
     ]);
     return { ...o, items, events };
   }),
+});
+
+/** Order tracking without logging in: order number + the email used at checkout. */
+export const trackRouter = router({
+  order: publicProcedure
+    .input(z.object({ number: z.string().trim().max(20), email: z.string().trim().max(160) }))
+    .mutation(async ({ ctx, input }) => {
+      await enforce(LIMITS.trackIp, ctx.ip, "Too many lookups. Please wait a few minutes.");
+      const number = input.number.toUpperCase().replace(/^#/, "");
+      const [o] = await ctx.db.select().from(orders).where(eq(orders.number, number)).limit(1);
+      // Same answer for a wrong number or a wrong email, so nobody can probe which orders exist.
+      if (!o || o.email.toLowerCase() !== input.email.toLowerCase())
+        throw new TRPCError({ code: "NOT_FOUND", message: "We couldn’t find an order with that number and email. Check both and try again." });
+      const [items, events] = await Promise.all([
+        ctx.db.select({ name: orderItems.name, qty: orderItems.qty }).from(orderItems).where(eq(orderItems.orderId, o.id)),
+        ctx.db.select({ status: orderEvents.status, at: orderEvents.createdAt }).from(orderEvents).where(eq(orderEvents.orderId, o.id)).orderBy(desc(orderEvents.createdAt)),
+      ]);
+      return {
+        number: o.number,
+        status: o.status,
+        placedAt: o.createdAt,
+        carrier: o.carrier,
+        trackingNumber: o.trackingNumber,
+        shippedAt: o.shippedAt,
+        items,
+        events: events.filter((e) => e.status),
+      };
+    }),
 });
 
 export const checkoutRouter = router({

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { api } from "@/server/caller";
 import { getSite } from "@/server/site-config";
 import { SortSelect } from "./sort-select";
+import { PeacockFeather, Rangoli } from "@/components/site/ornaments";
 
 export const metadata: Metadata = { title: "Shop" };
 
@@ -48,9 +49,12 @@ export default async function Shop({ searchParams }: { searchParams: SP }) {
 
   return (
     <>
-      <div className="on-dark">
-        <Container className="grid items-end gap-6 py-16 lg:grid-cols-12 lg:py-20">
-          <h1 className="text-[length:var(--text-display-s)] text-on-shyam lg:col-span-7">{title}</h1>
+      <div className="on-dark relative overflow-hidden">
+        <Rangoli spin className="absolute -top-28 -right-28 size-72 text-gold opacity-[0.12] sm:size-96" />
+        <Container className="relative grid items-end gap-6 py-16 lg:grid-cols-12 lg:py-20">
+          <div className="lg:col-span-7">
+            <h1 className="text-[length:var(--text-display-s)] text-on-shyam">{title}</h1>
+          </div>
           <p className="lead text-on-shyam-2 lg:col-span-4 lg:col-start-9">{blurb}</p>
         </Container>
       </div>
@@ -92,6 +96,7 @@ export default async function Shop({ searchParams }: { searchParams: SP }) {
 
         {list.length === 0 ? (
           <div className="flex flex-col items-center py-24 text-center">
+            <PeacockFeather className="mb-5 h-28 w-auto" />
             <p className="font-display text-3xl">{c.emptyTitle}</p>
             <p className="mt-2 max-w-sm text-ink-soft">{c.emptyBody}</p>
             <ButtonLink href="/shop" className="mt-6">

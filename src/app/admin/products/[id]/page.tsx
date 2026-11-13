@@ -339,7 +339,7 @@ function Editor({ id }: { id: string }) {
                 <input type="number" min={0} value={f.stock ?? 0} onChange={(e) => set("stock", Math.max(0, Number(e.target.value) || 0))} className="field tabular-nums" />
               </Field>
             )}
-            {!isNew && <Link href={`/admin/stock/${id}`} className="inline-block text-sm font-bold text-royal">Open stock ledger</Link>}
+            {!isNew && <div className="flex flex-wrap gap-4"><Link href={`/admin/stock/${id}`} className="inline-block text-sm font-bold text-royal">Open stock ledger</Link><Link href={`/admin/analytics/products/${id}`} className="inline-block text-sm font-bold text-royal">See sales</Link></div>}
           </Card>
 
           <Card className="space-y-4 p-5">

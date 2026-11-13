@@ -1,5 +1,5 @@
 import { adminRouter } from "./routers/admin";
-import { accountRouter, authRouter, cartRouter, catalogRouter, checkoutRouter, pincodeRouter } from "./routers/store";
+import { accountRouter, authRouter, cartRouter, catalogRouter, checkoutRouter, pincodeRouter, trackRouter } from "./routers/store";
 import { createCallerFactory, router } from "./trpc";
 
 export const appRouter = router({
@@ -9,6 +9,7 @@ export const appRouter = router({
   pincode: pincodeRouter,
   account: accountRouter,
   checkout: checkoutRouter,
+  track: trackRouter,
   admin: adminRouter,
 });
 

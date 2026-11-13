@@ -2,7 +2,9 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { Button, Spinner } from "@/components/ui";
+import { Check } from "lucide-react";
+import { Rangoli } from "@/components/site/ornaments";
+import { Button, Container, Spinner } from "@/components/ui";
 import { useTRPC } from "@/lib/trpc/client";
 import { useContent } from "@/components/site/content-context";
 
@@ -48,8 +50,8 @@ function LoginForm() {
   const error = (step === "email" ? request.error : verify.error)?.message ?? (step === "email" ? params.get("error") : null);
 
   return (
-    <div className="w-full max-w-sm">
-      <h1 className="text-[length:var(--text-display-s)]">{step === "email" ? copy.title : "Check your email"}</h1>
+    <div className="w-full">
+      <h1 className="text-4xl sm:text-5xl">{step === "email" ? copy.title : "Check your email"}</h1>
       <p className="mt-3 text-ink-soft">
         {step === "email" ? (
           copy.lede
@@ -85,6 +87,7 @@ function LoginForm() {
           <Button size="lg" className="w-full" disabled={request.isPending}>
             {request.isPending && <Spinner />} {copy.emailCta}
           </Button>
+          <p className="pt-1 text-center text-xs text-ink-mute">{copy.privacy}</p>
         </form>
       ) : (
         <form
@@ -129,19 +132,47 @@ function LoginForm() {
   );
 }
 
-export default function LoginPage() {
+function Panel() {
+  const c = useContent().login;
   return (
-    <div className="grid min-h-[70vh] md:grid-cols-2">
-      <div className="on-dark hidden md:flex md:items-center md:justify-center md:p-12">
-        <div className="arch-frame w-full max-w-[320px]">
-          <div className="arch aspect-[4/5] bg-[url('/brand/hero-temple.jpg')] bg-cover bg-[50%_60%]" role="img" aria-label="Temple by a lotus pond" />
-        </div>
-      </div>
-      <div className="flex items-center justify-center px-4 py-16">
-        <Suspense>
-          <LoginForm />
-        </Suspense>
+    <div className="relative min-h-56 overflow-hidden lg:min-h-full">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/brand/hero-temple.jpg" alt="" className="absolute inset-0 size-full object-cover object-[50%_60%]" />
+      <div className="absolute inset-0 bg-linear-to-t from-shyam via-shyam/60 to-shyam/0 lg:via-shyam/55" />
+      <div className="relative flex h-full flex-col justify-end p-6 text-white sm:p-8 lg:p-10">
+        <p className="deva text-lg text-gold sm:text-2xl" lang="sa">
+          धार्यते इति धर्मः
+        </p>
+        <p className="font-display mt-1 text-[1.75rem] leading-tight sm:text-4xl">{c.panelTitle}</p>
+        <ul className="mt-5 hidden space-y-2.5 text-[0.95rem] text-white/90 lg:block">
+          {[c.panelBenefit1, c.panelBenefit2, c.panelBenefit3].map((b) => (
+            <li key={b} className="flex items-start gap-2.5">
+              <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-gold text-shyam">
+                <Check className="size-3.5" strokeWidth={3} aria-hidden />
+              </span>
+              {b}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Container className="py-8 sm:py-12 lg:py-16">
+      <div className="mx-auto grid max-w-5xl overflow-hidden rounded-[1.75rem] border border-line bg-paper shadow-lift lg:min-h-[34rem] lg:grid-cols-[1.05fr_1fr]">
+        <Panel />
+        <div className="relative flex items-center justify-center overflow-hidden px-6 py-10 sm:px-10 lg:px-14">
+          <Rangoli spin className="absolute -right-24 -bottom-24 size-64 text-gold opacity-[0.12]" />
+          <div className="relative w-full max-w-sm">
+            <Suspense>
+              <LoginForm />
+            </Suspense>
+          </div>
+        </div>
+      </div>
+    </Container>
   );
 }

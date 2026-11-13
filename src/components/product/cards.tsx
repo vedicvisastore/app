@@ -13,7 +13,7 @@ function StockNote({ available }: { available: number | null }) {
 export function ProductCard({ p, priority }: { p: CardProduct; priority?: boolean }) {
   return (
     <article className="group relative flex flex-col">
-      <Link href={`/p/${p.slug}`} className="relative block aspect-[4/5] overflow-hidden rounded-[var(--radius-card)] bg-paper-2 outline outline-1 -outline-offset-1 outline-ink/[0.07]">
+      <Link href={`/p/${p.slug}`} aria-label={p.name} className="relative block aspect-[4/5] overflow-hidden rounded-[var(--radius-card)] bg-paper-2">
         {p.image ? (
           <Media src={p.image} alt={p.name} priority={priority} className="h-full w-full object-cover" />
         ) : (
@@ -32,7 +32,7 @@ export function ProductCard({ p, priority }: { p: CardProduct; priority?: boolea
         </div>
       </Link>
       <div className="flex flex-1 flex-col pt-3">
-        <p className="text-sm text-ink-soft">{p.kind === "bundle" ? `${p.bundleGroup ?? "Bundle"}, ${p.itemCount} items` : p.categoryName}</p>
+        <p className="text-sm text-ink-soft">{p.kind === "bundle" ? p.bundleGroup : p.categoryName}</p>
         <h3 className="mt-1 font-sans text-[1.0625rem] leading-snug font-bold">
           <Link href={`/p/${p.slug}`} className="hover:text-royal">
             {p.name}
@@ -47,24 +47,21 @@ export function ProductCard({ p, priority }: { p: CardProduct; priority?: boolea
   );
 }
 
-/** Bhakti Box card: the mandir doorway, with what the box holds as the hook. */
+/** Bhakti Boxes use the same rectangular image area as the catalogue. */
 export function BoxCard({ p, priority }: { p: CardProduct; priority?: boolean }) {
   const saving = p.worth - p.price;
   return (
     <article className="group flex flex-col">
-      <Link href={`/p/${p.slug}`} className="arch-frame relative block">
-        <div className="arch relative aspect-[4/5] overflow-hidden bg-paper-2">
+      <Link href={`/p/${p.slug}`} aria-label={p.name} className="relative block aspect-[4/5] overflow-hidden rounded-[var(--radius-card)] bg-paper-2">
           {p.image ? <Media src={p.image} alt={p.name} priority={priority} className="h-full w-full object-cover" /> : <ProductArt name={p.name} seed={p.id} />}
           {p.upcoming && <Badge tone="haldi" className="absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap">{launchLabel(p.launchAt)}</Badge>}
-        </div>
       </Link>
-      <div className="pt-6">
+      <div className="pt-4">
         <h3 className="font-display text-[length:var(--text-title)]">
           <Link href={`/p/${p.slug}`} className="hover:text-royal">
             {p.name.replace(/ Bhakti Box$/, "")}
           </Link>
         </h3>
-        <p className="mt-1 text-sm text-ink-soft">{p.itemCount} items inside</p>
         <div className="mt-3">
           <Price price={p.price} mrp={p.mrp} size="sm" />
         </div>

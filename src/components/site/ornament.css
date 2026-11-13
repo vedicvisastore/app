@@ -1,0 +1,52 @@
+.store-ornament {
+  display: block;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  color: var(--color-gold-ink);
+  pointer-events: none;
+  user-select: none;
+}
+.store-ornament svg { display: block; width: 100%; height: 100%; }
+.on-dark .store-ornament { color: var(--color-gold); }
+.store-ornament-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  pointer-events: none;
+}
+.store-ornament-divider::before, .store-ornament-divider::after {
+  content: "";
+  height: 1px;
+  width: clamp(48px, 9vw, 128px);
+  background: currentColor;
+  opacity: 0.22;
+}
+.store-ornament-divider { color: var(--color-gold-ink); }
+.on-dark .store-ornament-divider { color: var(--color-gold); }
+.home-collection-ornament { margin: clamp(36px, 5vw, 64px) auto 0; }
+.home-collection-ornament + .home-boxes { padding-top: 32px; }
+.collection-title-ornament { margin-bottom: 20px; width: 44px; height: 54px; opacity: 0.8; }
+.footer-ornament { padding-top: 24px; }
+.footer-ornament .store-ornament { width: 38px; height: 38px; }
+@media (max-width: 639px) {
+  .store-ornament { width: 40px; height: 40px; }
+  .collection-title-ornament { width: 32px; height: 40px; margin-bottom: 12px; }
+  .home-collection-ornament + .home-boxes { padding-top: 24px; }
+}
+
+/* Soft pastel colour on every ornament (owner request): gulal → gold → peacock rules, a lit diya, a tinted lotus and feather. */
+.store-ornament-divider::before { background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--color-gulal) 45%, white) 65%, var(--color-gold)); opacity: 0.6; height: 2px; border-radius: 2px; }
+.store-ornament-divider::after { background: linear-gradient(270deg, transparent, color-mix(in oklab, var(--color-peacock) 45%, white) 65%, var(--color-gold)); opacity: 0.6; height: 2px; border-radius: 2px; }
+.store-ornament-diya path:first-child { fill: color-mix(in oklab, var(--color-gold) 75%, var(--color-gulal)); stroke: var(--color-gold); transform-origin: 50% 49%; animation: vv-flame 3s ease-in-out infinite; }
+.store-ornament-diya path:nth-child(2) { fill: color-mix(in oklab, var(--color-gold) 30%, transparent); }
+.store-ornament-diya { filter: drop-shadow(0 0 10px color-mix(in oklab, var(--color-gold) 40%, transparent)); }
+.store-ornament-lotus path:nth-child(1) { fill: color-mix(in oklab, var(--color-gulal) 22%, transparent); stroke: color-mix(in oklab, var(--color-gulal) 70%, var(--color-gold)); }
+.store-ornament-lotus path:nth-child(2), .store-ornament-lotus path:nth-child(3) { fill: color-mix(in oklab, var(--color-gulal) 12%, transparent); }
+.store-ornament-feather path:nth-child(1) { stroke: var(--color-gold); }
+.store-ornament-feather path:nth-child(2) { fill: color-mix(in oklab, var(--color-mor) 25%, transparent); stroke: color-mix(in oklab, var(--color-mor) 60%, white); }
+.store-ornament-feather path:nth-child(3) { fill: color-mix(in oklab, var(--color-peacock) 35%, transparent); }
+.store-ornament-feather ellipse { fill: color-mix(in oklab, var(--color-royal) 70%, var(--color-peacock)); }
+@keyframes vv-flame { 0%, 100% { transform: scale(1) rotate(-2deg); } 50% { transform: scale(0.95, 1.06) rotate(2deg); } }
+@media (prefers-reduced-motion: reduce) { .store-ornament-diya path:first-child { animation: none; } }

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -55,14 +56,15 @@ export default function SettingsPage() {
           </Card>
           <Card className="space-y-4 p-5">
             <h2 className="font-sans text-lg font-bold">Store</h2>
-            <Field label="Announcement bar" hint="Separate messages with · (middle dot). Leave empty to hide the bar.">
-              <input value={s.announcement} onChange={(e) => setS({ ...s, announcement: e.target.value })} className="field" maxLength={200} />
-            </Field>
+            <p className="rounded-xl bg-sky/50 px-4 py-3 text-sm text-ink-soft">
+              The scrolling strip at the top of the store is edited in <Link href="/admin/ribbon" className="font-bold text-royal">Top ribbon</Link>.
+            </p>
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label="Support email"><input value={s.supportEmail} onChange={(e) => setS({ ...s, supportEmail: e.target.value })} className="field" /></Field>
               <Field label="Support phone"><input value={s.supportPhone} onChange={(e) => setS({ ...s, supportPhone: e.target.value })} className="field" /></Field>
-              <Field label="Instagram"><input value={s.instagram} onChange={(e) => setS({ ...s, instagram: e.target.value })} className="field" placeholder="@vedicvisa or profile link" /></Field>
+              <Field label="Store Instagram"><input value={s.instagram} onChange={(e) => setS({ ...s, instagram: e.target.value })} className="field" placeholder="@vedicvisastore or profile link" /></Field>
             </div>
+            <Field label="Creator’s Instagram" hint="Shown as “Meet the creator”. Leave empty to hide."><input value={s.creatorInstagram} onChange={(e) => setS({ ...s, creatorInstagram: e.target.value })} className="field" placeholder="@vedicvisa or profile link" /></Field>
             <Field label="YouTube" hint="Channel link or @handle"><input value={s.youtube} onChange={(e) => setS({ ...s, youtube: e.target.value })} className="field" placeholder="https://www.youtube.com/@vedicvisa" /></Field>
           </Card>
           <Button disabled={save.isPending}>{save.isPending && <Spinner />} Save settings</Button>

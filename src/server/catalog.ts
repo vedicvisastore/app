@@ -247,7 +247,6 @@ export async function productDetail(db: DB, slug: string, countView = true) {
     id: p.id,
     name: p.name,
     slug: p.slug,
-    sku: p.sku,
     kind: p.kind,
     bundleGroup: p.bundleGroup,
     tagline: p.tagline,
