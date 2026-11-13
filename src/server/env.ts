@@ -29,7 +29,7 @@ export const env = {
   /** Hosts allowed to send state-changing requests (CSRF guard). */
   allowedHosts: () => {
     const hosts = new Set<string>();
-    try { hosts.add(new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").host); } catch {}
+    try { hosts.add(new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").host); } catch {}
     if (process.env.ADMIN_HOST) hosts.add(process.env.ADMIN_HOST);
     return hosts;
   },
@@ -49,5 +49,5 @@ export const env = {
     return !f || f.includes("yourdomain") ? "VedicVisa <onboarding@resend.dev>" : f;
   },
   shippingWebhookSecret: () => process.env.SHIPPING_WEBHOOK_SECRET ?? "",
-  siteUrl: () => (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, ""),
+  siteUrl: () => (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, ""),
 };

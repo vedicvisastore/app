@@ -13,7 +13,7 @@
     "db:setup": "npm run db:migrate && npm run db:seed && npm run db:pincodes",
     "api": "tsx scripts/server.ts",
     "dev:neon": "next dev",
-    "cf:build": "ADMIN_HOST=${ADMIN_HOST:-admin.vedicvisa.com} NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://vedicvisa.com} opennextjs-cloudflare build",
+    "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "npm run cf:build && opennextjs-cloudflare preview",
     "cf:deploy": "npm run cf:build && opennextjs-cloudflare deploy",
     "db:pincodes": "tsx scripts/load-pincodes.ts",

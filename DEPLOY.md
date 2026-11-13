@@ -83,7 +83,7 @@ When to pay: Workers Paid ($5/month) when daily requests near 100k or before a b
 - Every push to `main` (or "Run workflow" by hand): the checks, then **migrate the Neon database**, build for Workers and **deploy**.
 - GitHub repo → Settings → Secrets and variables → Actions:
   - `CLOUDFLARE_API_TOKEN`: Cloudflare → My Profile → API Tokens → Create → template "Edit Cloudflare Workers" (add R2 edit permission too).
-  - `CLOUDFLARE_ACCOUNT_ID`: `4ebac1de692a72c4dfbf340e5b10cee5`
+  - `CLOUDFLARE_ACCOUNT_ID`: `e3041247576460aba3e75218a15bbde7`
   - `DATABASE_URL`: the Neon pooled connection string (used only for migrations; the live site reads its own copy from the Worker secret).
 - Runtime keys (Razorpay, Resend, Google, R2, AUTH_SECRET…) live in Cloudflare as Worker secrets, not in GitHub: `npx wrangler secret bulk .env.production`.
 - The deploy job uses the GitHub environment `production`; add yourself as a required reviewer there if you want to approve each deploy.

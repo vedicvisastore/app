@@ -10,7 +10,7 @@ import "./globals.css";
 const rozha = Rozha_One({ weight: "400", subsets: ["latin", "devanagari"], variable: "--font-rozha", display: "swap" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   title: { default: "VedicVisa: Bhakti Boxes, Japa Malas and Puja Essentials", template: "%s | VedicVisa" },
   description:
     "Hand-packed Bhakti Boxes, Tulsi japa malas, tilak kits and puja essentials for a new generation of devotees. Shipped to every pincode in India by India Post.",
