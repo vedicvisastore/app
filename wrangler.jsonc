@@ -7,6 +7,12 @@
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "vedicvisa" }],
   "observability": { "enabled": true },
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "vedicvisa.com", "custom_domain": true },
+    { "pattern": "www.vedicvisa.com", "custom_domain": true },
+    { "pattern": "admin.vedicvisa.com", "custom_domain": true }
+  ],
   // Secrets (DATABASE_URL, AUTH_SECRET, RAZORPAY_*, RESEND_API_KEY, GOOGLE_*, R2_*, and COOKIE_DOMAIN=.vedicvisa.com once the domain is live) are set with
   //   npx wrangler secret put NAME
   "vars": {
