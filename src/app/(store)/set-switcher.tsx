@@ -18,7 +18,7 @@ export function SetSwitcher({ japa, shringar }: { japa: CardProduct[]; shringar:
   const t = TABS.find((x) => x.key === tab)!;
 
   return (
-    <section className="mt-[var(--section-gap-l)] bg-paper-2 py-[var(--section-gap-s)]" aria-labelledby="sets">
+    <section className="mt-[var(--section-gap-l)] bg-paper-2 py-[var(--section-gap-s)]" aria-labelledby="sets" data-tint="peacock">
       <Container className="grid gap-12 lg:grid-cols-12">
         <div className="lg:col-span-5">
           <p className="deva text-[clamp(4.5rem,10vw,9rem)] leading-none text-paper-3" aria-hidden lang="sa">

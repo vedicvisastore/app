@@ -61,3 +61,16 @@
   50% { transform: translate(30px, 55vh) rotate(200deg); }
   100% { transform: translate(-20px, 110vh) rotate(420deg); opacity: 0.2; }
 }
+
+/* Sticky header tint: a soft pastel of the section passing under it (header.tsx reads data-tint). Theme tokens, so every theme works. */
+.vv-header { transition: background-color 0.6s ease, border-color 0.6s ease; }
+.vv-header[data-tint="royal"] { background-color: color-mix(in oklab, var(--color-royal) 17%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-royal) 32%, var(--color-paper)); }
+.vv-header[data-tint="gulal"] { background-color: color-mix(in oklab, var(--color-gulal) 17%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-gulal) 32%, var(--color-paper)); }
+.vv-header[data-tint="gold"] { background-color: color-mix(in oklab, var(--color-gold) 28%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-gold) 45%, var(--color-paper)); }
+.vv-header[data-tint="peacock"] { background-color: color-mix(in oklab, var(--color-peacock) 19%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-peacock) 34%, var(--color-paper)); }
+.vv-header[data-tint="mor"] { background-color: color-mix(in oklab, var(--color-mor) 19%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-mor) 34%, var(--color-paper)); }
+/* The line between the two header rows follows the tint too. */
+.vv-header[data-tint] > nav { border-color: inherit; }
+/* Inputs inside the tinted bar stay light so they still read as fields. */
+.vv-header[data-tint] form label { background-color: color-mix(in oklab, var(--color-paper) 85%, transparent); }
+@media (prefers-reduced-motion: reduce) { .vv-header { transition: none; } }

@@ -32,6 +32,31 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
   const [search, setSearch] = useState(false);
   const [q, setQ] = useState("");
   const [bump, setBump] = useState(false);
+  // The bar takes a soft pastel of whichever page section is passing under it (sections set data-tint).
+  const headerRef = useRef<HTMLElement>(null);
+  const [tint, setTint] = useState<string | null>(null);
+  useEffect(() => {
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const line = (headerRef.current?.getBoundingClientRect().bottom ?? 0) + 1;
+      let current: string | null = null;
+      for (const el of document.querySelectorAll<HTMLElement>("main [data-tint]")) {
+        const r = el.getBoundingClientRect();
+        if (r.top <= line && r.bottom > line) current = el.dataset.tint ?? null;
+      }
+      setTint(current ?? routeTint(pathname));
+    };
+    const onScroll = () => void (raf ||= requestAnimationFrame(update));
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [pathname]);
 
   useEffect(() => {
     setMenu(false);
@@ -114,7 +139,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
         </div>
       )}
 
-      <header className="sticky top-0 z-[300] border-b border-line bg-paper">
+      <header ref={headerRef} className="vv-header sticky top-0 z-[300] border-b border-line bg-paper" data-tint={tint ?? undefined}>
         {/* Top row: search · logo (centre) · account and cart */}
         <div className="wrap grid h-[72px] grid-cols-[1fr_auto_1fr] items-center gap-3 sm:h-20 lg:h-[100px]">
           <div className="flex items-center gap-1">
@@ -408,4 +433,26 @@ function Dropdown({ label, active, pathname, wide, alignRight, children }: { lab
       </div>
     </div>
   );
+}
+
+/** Every page has a colour: used wherever no tagged section is under the bar. */
+function routeTint(path: string) {
+  const first = path.split("/")[1] ?? "";
+  const map: Record<string, string> = {
+    "": "royal",
+    shop: "peacock",
+    deals: "gulal",
+    new: "mor",
+    c: "gulal",
+    p: "royal",
+    cart: "gold",
+    checkout: "gold",
+    account: "peacock",
+    login: "gulal",
+    track: "mor",
+    contact: "mor",
+    about: "gold",
+    shipping: "peacock",
+  };
+  return map[first] ?? "royal";
 }

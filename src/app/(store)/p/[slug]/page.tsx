@@ -117,7 +117,7 @@ export default async function ProductPage({ params }: { params: Params }) {
       </Container>
 
       {p.components.length > 0 && (
-        <section className="pt-[var(--section-gap)]" aria-labelledby="contents">
+        <section className="pt-[var(--section-gap)]" aria-labelledby="contents" data-tint="gold">
           <Container>
             <h2 id="contents">
               {c.insideTitle}
@@ -142,7 +142,7 @@ export default async function ProductPage({ params }: { params: Params }) {
       )}
 
       {related.length > 0 && (
-        <section className="mt-[var(--section-gap)] -mb-[var(--section-gap-s)] bg-paper-2 pt-[var(--section-gap-s)] pb-[calc(var(--section-gap-s)*0.75)]" aria-labelledby="related">
+        <section className="mt-[var(--section-gap)] -mb-[var(--section-gap-s)] bg-paper-2 pt-[var(--section-gap-s)] pb-[calc(var(--section-gap-s)*0.75)]" aria-labelledby="related" data-tint="peacock">
           <Container>
             <h2 id="related">
               {c.relatedTitle}

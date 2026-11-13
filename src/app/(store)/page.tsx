@@ -62,7 +62,7 @@ export default async function Home() {
   return (
     <div className="home-page">
       {/* Hero: a bento of the offer, the box, the painting and the sets */}
-      <section className="home-hero relative" aria-label="VedicVisa">
+      <section className="home-hero relative" aria-label="VedicVisa" data-tint="royal">
         <FestiveHanging />
         <Container>
           <HeroSlider labels={heroSlides.map((slide) => slide.label)}>
@@ -113,7 +113,7 @@ export default async function Home() {
 
       {/* The boxes */}
       {boxes.length > 0 && (
-        <section className="home-boxes" aria-labelledby="boxes">
+        <section className="home-boxes" aria-labelledby="boxes" data-tint="gold">
           <Container>
             <div className="home-section-heading grid items-end gap-6 lg:grid-cols-12">
               <h2 id="boxes" className="lg:col-span-7">
@@ -136,7 +136,7 @@ export default async function Home() {
       {(japa.length > 0 || shringar.length > 0) && <SetSwitcher japa={japa} shringar={shringar} />}
 
       {/* Shloka band: the brand's line, set as the picture, beside the user's own painting */}
-      <section className="home-philosophy on-dark" aria-labelledby="shloka">
+      <section className="home-philosophy on-dark" aria-labelledby="shloka" data-tint="royal">
         <Container className="home-philosophy-grid">
           <div className="home-philosophy-art">
             <div className="arch-frame">
@@ -156,7 +156,7 @@ export default async function Home() {
 
       {/* Daily essentials */}
       {essentials.length > 0 && (
-        <section className="home-essentials" aria-labelledby="essentials">
+        <section className="home-essentials" aria-labelledby="essentials" data-tint="mor">
           <Container>
             <div className="flex flex-wrap items-end justify-between gap-6">
               <h2 id="essentials">{anyTrending ? c.essentialsTrendingTitle : c.essentialsTitle}</h2>
@@ -176,7 +176,7 @@ export default async function Home() {
 
       {/* Follow along: the brand's own channels */}
       {(socialUrl("instagram", settings.instagram) || socialUrl("youtube", settings.youtube)) && (
-        <section className="home-follow" aria-labelledby="follow">
+        <section className="home-follow" aria-labelledby="follow" data-tint="gulal">
           <Container>
             <h2 id="follow">{c.followTitle}</h2>
             <div className="home-social-grid">
