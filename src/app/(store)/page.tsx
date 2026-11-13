@@ -76,7 +76,7 @@ export default async function Home() {
                       <Image src="/brand/hero-temple.jpg" alt="A temple by a lotus pond with a peacock" fill sizes="(min-width: 1440px) 280px, (min-width: 1024px) 22vw, 50vw" className="object-cover object-[80%_62%]" />
                       <span className="home-story-caption"><span>{c.storyTile}</span><ArrowUpRight aria-hidden size={20} /></span>
                     </Link>
-                    <Link href={slide.promoHref} className="home-japa">
+                    <Link href={slide.promoHref} className="home-japa" data-accent={["gulal", "peacock", "mor", "royal"][i % 4]}>
                       <span className="home-japa-title">{slide.promoTitle}</span>
                       <span className="home-japa-action"><span>{slide.promoAction}</span><ArrowUpRight aria-hidden size={20} /></span>
                     </Link>

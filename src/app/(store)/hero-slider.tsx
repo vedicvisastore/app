@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Pause, Play } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Children, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useContent } from "@/components/site/content-context";
 
@@ -92,7 +92,6 @@ export function HeroSlider({ children, labels }: { children: ReactNode; labels: 
           {labels.map((label, i) => <button key={label} type="button" aria-current={index === i ? "true" : undefined} aria-controls={id} onClick={() => { setPaused(true); go(i); }}>{label}</button>)}
         </div>
         <div className="home-hero-controls">
-          {!reduced && <button data-hero-playback type="button" onClick={() => setPaused((value) => !value)} aria-label={paused ? c.heroSliderPlay : c.heroSliderPause} aria-controls={id}>{paused ? <Play aria-hidden size={17} /> : <Pause aria-hidden size={17} />}</button>}
           <button type="button" disabled={index === 0} onClick={() => { setPaused(true); go(index - 1); }} aria-label={c.heroSliderPrevious} aria-controls={id}><ArrowLeft aria-hidden size={18} /></button>
           <button type="button" disabled={index === count - 1} onClick={() => { setPaused(true); go(index + 1); }} aria-label={c.heroSliderNext} aria-controls={id}><ArrowRight aria-hidden size={18} /></button>
         </div>

@@ -87,6 +87,13 @@
 .home-story-link { position: relative; overflow: hidden; border-radius: var(--home-radius); background: var(--color-peacock); color: var(--color-white); }
 .home-story-caption { position: absolute; inset: auto 0 0; display: flex; align-items: center; justify-content: space-between; padding: var(--space-xl) var(--space-md) var(--space-md); background: linear-gradient(transparent, var(--color-shyam)); font-size: var(--text-sm); font-weight: 700; }
 .home-japa { position: relative; display: flex; flex-direction: column; justify-content: end; overflow: hidden; padding: var(--space-lg); border-radius: var(--home-radius); background: var(--color-paper-2); color: var(--color-ink); }
+/* Owner preference: the promo tile wears a bold accent (gulal on the first slide, then peacock, mor, royal). */
+.home-japa[data-accent] { color: var(--color-white); }
+.home-japa[data-accent="gulal"] { background: var(--color-gulal); }
+.home-japa[data-accent="peacock"] { background: var(--color-peacock); }
+.home-japa[data-accent="mor"] { background: var(--color-mor); }
+.home-japa[data-accent="royal"] { background: var(--color-royal); }
+.home-japa[data-accent] .home-japa-action > span { text-decoration-color: color-mix(in oklab, var(--color-white) 55%, transparent); }
 .home-japa-title { position: relative; font-family: var(--font-display); font-size: clamp(1.4rem, 2vw, 1.8rem); line-height: 1.1; }
 .home-japa-action { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs); margin-top: var(--space-md); font-size: var(--text-sm); }
 .home-japa-action > span { text-decoration: underline; text-underline-offset: 4px; }
