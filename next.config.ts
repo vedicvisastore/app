@@ -51,6 +51,9 @@ const nextConfig: NextConfig = {
   // `npm run build:check` builds into .next-check so it never clobbers a running `next dev` (that caused an endless reload loop).
   distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
+  experimental: {
+    agentUpgrade: "security",
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
