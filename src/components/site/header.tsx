@@ -141,7 +141,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
 
       <header ref={headerRef} className="vv-header sticky top-0 z-[300] border-b border-line bg-paper" data-tint={tint ?? undefined}>
         {/* Top row: search · logo (centre) · account and cart */}
-        <div className="wrap grid h-[72px] grid-cols-[1fr_auto_1fr] items-center gap-3 sm:h-20 lg:h-[100px]">
+        <div className="wrap grid h-[84px] grid-cols-[1fr_auto_1fr] items-center gap-3 sm:h-[92px] lg:h-[120px]">
           <div className="flex items-center gap-1">
             <button className={cn(iconBtn, "-ml-2 lg:hidden")} onClick={() => setMenu(true)} aria-label="Open menu" aria-expanded={menu}>
               <Menu className="size-5" />
@@ -158,7 +158,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
           </div>
 
           <Link href="/" className="justify-self-center" aria-label="VedicVisa home">
-            <Image src="/brand/logo.png" alt="VedicVisa" width={900} height={591} priority className="h-[52px] w-auto sm:h-[60px] lg:h-[80px]" />
+            <Image src="/brand/logo.png" alt="VedicVisa" width={900} height={591} priority className="h-[66px] w-auto sm:h-[74px] lg:h-[100px]" />
           </Link>
 
           <div className="flex items-center justify-end gap-1">

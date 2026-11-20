@@ -135,6 +135,8 @@ export const CONTENT_GROUPS = [
     fields: {
       addToCart: { label: "Add button", value: "Add to cart" },
       buyNow: { label: "Buy now button", value: "Buy now" },
+      inCart: { label: "Shown when this product is already in the cart", value: "{qty} in your cart" },
+      viewCart: { label: "Open cart button (product already in cart)", value: "View cart" },
       soldOutTitle: { label: "Sold out title", value: "Sold out for now" },
       soldOutBody: { label: "Sold out line", value: "We restock every week. Check back soon or explore similar items below." },
       launchBody: { label: "Launching soon line", value: "This one isn’t on sale yet. We announce every launch on Instagram first." },

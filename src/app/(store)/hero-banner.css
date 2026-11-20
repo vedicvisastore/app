@@ -1,0 +1,229 @@
+/* Home banner carousel (hero-banner.tsx). Desktop: a 16:9 stage shares the painting's geometry, so products stand on
+   its plinths; sizes use cqi of the stage so the whole slide scales like the picture. Phones: plain stacked layout. */
+
+.hb {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  container-type: size;
+  /* Fill the first screen, but never so short that the painting's plinths get cropped away on wide, short laptops */
+  height: clamp(520px, max(calc(100svh - 230px), 40vw), 720px);
+  background: var(--color-paper-2);
+}
+
+/* Same placement as object-fit: cover; object-position: 50% 55% */
+.hb-stage {
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  width: max(100cqw, 177.78cqh);
+  aspect-ratio: 16 / 9;
+  translate: -50% -55%;
+  container-type: inline-size;
+}
+
+.hb-scenes { position: absolute; inset: 0; z-index: -1; }
+.hb-scene { opacity: 0; transition: opacity 0.9s ease; }
+.hb-scene[data-active] { opacity: 1; }
+.hb-scene img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%; user-select: none; }
+
+.hb-viewport { height: 100%; overflow: hidden; touch-action: pan-y; }
+.hb-track { display: flex; height: 100%; will-change: transform; }
+.hb-slide { position: relative; flex: 0 0 100%; min-width: 0; height: 100%; }
+
+/* Type: one family of sizes for every slide */
+.hb-label {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+  background: color-mix(in oklab, var(--color-paper) 82%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-gold) 50%, transparent);
+  color: var(--color-gold-ink);
+  font-size: max(12px, 0.85cqi);
+  font-weight: 700;
+}
+.hb-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.4cqi, 4.4rem);
+  line-height: 1.04;
+  color: var(--color-shyam);
+  text-wrap: balance;
+  text-shadow: 0 1px 18px color-mix(in oklab, var(--color-paper) 85%, transparent);
+}
+.hb-label + .hb-title { margin-top: 0.4em; }
+.hb-lede {
+  margin-top: 0.9em;
+  font-size: max(15px, 1.15cqi);
+  line-height: 1.5;
+  color: var(--color-ink);
+  text-shadow: 0 0 14px var(--color-paper), 0 0 4px color-mix(in oklab, var(--color-paper) 80%, transparent);
+}
+.hb-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.5rem; margin-top: max(18px, 1.6cqi); }
+.hb-secondary {
+  font-weight: 700;
+  color: var(--color-shyam);
+  text-decoration: underline;
+  text-decoration-color: var(--color-gold);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
+.hb-name { display: block; overflow: hidden; font-size: max(13px, 0.9cqi); font-weight: 700; color: var(--color-ink); text-overflow: ellipsis; white-space: nowrap; }
+
+/* Brand: logo and line in the open sky */
+.hb-brand {
+  position: absolute;
+  top: 21%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 48%;
+  text-align: center;
+  translate: -50% 0;
+}
+.hb-logo { width: 34%; height: auto; margin-bottom: 1.2cqi; filter: drop-shadow(0 6px 18px color-mix(in oklab, var(--color-paper) 90%, transparent)); }
+.hb-brand .hb-actions { justify-content: center; }
+
+/* Feature: copy in the sky on the right, product on the long plinth on the left */
+.hb-copy { position: absolute; top: 22%; left: 55%; width: 31%; }
+.hb-feature-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 26rem;
+  margin-top: max(16px, 1.4cqi);
+  border-radius: 14px;
+  padding: 0.55rem 0.55rem 0.55rem 1rem;
+  background: color-mix(in oklab, var(--color-paper) 88%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-gold) 35%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+/* Trio: heading centred above three plinths */
+.hb-heading { position: absolute; top: 20%; left: 50%; display: flex; flex-direction: column; align-items: center; width: 60%; text-align: center; translate: -50% 0; }
+.hb-heading .hb-actions { justify-content: center; margin-top: max(12px, 1.1cqi); }
+.hb-items { position: absolute; inset: 0; list-style: none; margin: 0; padding: 0; }
+
+/* Products stand on the plinth tops; a soft contact shadow grounds them */
+.hb-item { position: absolute; bottom: 28.9%; width: 12.5%; translate: -50% 0; }
+.hb-item-feature { left: 30.6%; bottom: 26.8%; width: 19%; }
+.hb-item::before {
+  content: "";
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: -0.5cqi;
+  height: 1.4cqi;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklab, #3b2a12 45%, transparent), transparent);
+}
+.hb-photo {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 0.6cqi;
+  border: max(3px, 0.28cqi) solid var(--color-paper);
+  background: var(--color-paper);
+  box-shadow: 0 1.4cqi 2.4cqi -1.2cqi color-mix(in oklab, #3b2a12 55%, transparent), 0 0 0 1px color-mix(in oklab, var(--color-gold) 45%, transparent);
+}
+.hb-photo img, .hb-photo video { transition: transform 0.6s ease; }
+.hb-photo:hover img { transform: scale(1.04); }
+/* Name and price ride on the carved face of the plinth */
+.hb-tag {
+  position: absolute;
+  top: calc(100% + 0.9cqi);
+  left: 50%;
+  width: 108%;
+  border-radius: 10px;
+  padding: 0.35rem 0.6rem;
+  background: color-mix(in oklab, var(--color-paper) 90%, transparent);
+  box-shadow: 0 8px 18px -12px color-mix(in oklab, #3b2a12 60%, transparent);
+  text-align: center;
+  translate: -50% 0;
+  backdrop-filter: blur(4px);
+}
+.hb-tag > span { justify-content: center; }
+
+/* Incoming slide: content rises in while it slides across */
+.hb-rise { opacity: 0; transform: translateY(16px); transition: opacity 0.6s ease 0.2s, transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s; }
+.hb-slide[data-active] .hb-rise { opacity: 1; transform: none; }
+
+/* Controls */
+.hb-arrow {
+  position: absolute;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--color-paper) 85%, transparent);
+  color: var(--color-shyam);
+  box-shadow: 0 8px 20px -10px color-mix(in oklab, var(--color-shyam) 50%, transparent);
+  backdrop-filter: blur(6px);
+  translate: 0 -50%;
+  transition: background-color 0.2s ease;
+}
+.hb-arrow:hover { background: var(--color-paper); }
+.hb-prev { left: clamp(14px, 2.2vw, 36px); }
+.hb-next { right: clamp(14px, 2.2vw, 36px); }
+.hb-dots {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  display: flex;
+  gap: 2px;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: color-mix(in oklab, var(--color-paper) 75%, transparent);
+  backdrop-filter: blur(6px);
+  translate: -50% 0;
+}
+.hb-dots button { display: grid; place-items: center; height: 24px; padding-inline: 6px; }
+.hb-dots button::before { content: ""; width: 8px; height: 8px; border-radius: 999px; background: color-mix(in oklab, var(--color-shyam) 30%, transparent); transition: width 0.3s ease, background-color 0.3s ease; }
+.hb-dots button[aria-current]::before { width: 26px; background: var(--color-royal); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hb-scene, .hb-rise { transition: none; }
+}
+
+/* Phones and small tablets: scene as a backdrop, content stacked */
+@media (max-width: 899px) {
+  .hb { height: auto; container-type: normal; }
+  .hb-scene { inset: 0; left: 0; top: 0; width: 100%; height: 100%; aspect-ratio: auto; translate: none; }
+  .hb-slide .hb-stage {
+    position: relative;
+    left: auto;
+    top: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    padding: 30px var(--gutter) 66px;
+    text-align: center;
+    translate: none;
+  }
+  .hb-brand, .hb-copy, .hb-heading { position: static; width: 100%; max-width: 32rem; translate: none; }
+  .hb-copy { display: flex; flex-direction: column; align-items: center; }
+  .hb-actions { justify-content: center; }
+  .hb-title { font-size: clamp(2rem, 8.4vw, 2.8rem); }
+  .hb-label { font-size: 0.8rem; }
+  .hb-lede { font-size: 1rem; }
+  .hb-name { font-size: 0.85rem; }
+  .hb-logo { width: min(52vw, 220px); margin-bottom: 12px; }
+  .hb-feature-line { width: 100%; text-align: left; }
+  .hb-item, .hb-item-feature { position: static; width: auto; translate: none; }
+  .hb-item-feature { order: -1; width: min(52vw, 220px); }
+  .hb-item::before { display: none; }
+  .hb-photo { border-radius: 10px; border-width: 3px; box-shadow: 0 14px 24px -14px color-mix(in oklab, #3b2a12 60%, transparent); }
+  .hb-items { position: static; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 32rem; }
+  .hb-items .hb-item { transition-delay: 0.25s !important; }
+  .hb-tag { position: static; width: auto; margin-top: 8px; padding: 0.4rem; translate: none; }
+  .hb-tag .hb-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .hb-arrow { display: none; }
+}

@@ -5,6 +5,7 @@ import { useCart } from "@/components/cart/cart-context";
 import { QtyStepper } from "@/components/cart/cart-drawer";
 import { Button } from "@/components/ui";
 import { useContent } from "@/components/site/content-context";
+import { fmt } from "@/content/defaults";
 
 export function BuyBox({ productId, available, name, upcoming, instagram }: { productId: number; available: number | null; name: string; upcoming?: string | null; instagram?: string | null }) {
   const c = useContent().product;
@@ -34,21 +35,49 @@ export function BuyBox({ productId, available, name, upcoming, instagram }: { pr
       </div>
     );
 
+  // One number, one source: once the product is in the cart, the stepper edits the cart itself (so it always matches
+  // the drawer and the header count). Before that, it only picks how many "Add to cart" will add.
+  const line = cart.lines.find((l) => l.productId === productId);
+  const inCart = cart.ready ? (line?.qty ?? 0) : 0;
+  const limit = Math.min(20, available ?? 20);
+
   return (
     <div className="mt-7">
       <div className="flex flex-wrap items-center gap-3">
-        <QtyStepper qty={qty} max={available} onChange={(q) => setQty(Math.max(1, q))} label={name} />
+        {inCart > 0 ? (
+          <>
+            <QtyStepper qty={inCart} max={available} onChange={(q) => cart.setQty(productId, Math.min(limit, q))} label={name} />
+            <span className="text-sm font-bold text-mor" aria-live="polite">
+              {fmt(c.inCart, { qty: inCart })}
+            </span>
+          </>
+        ) : (
+          <QtyStepper qty={qty} max={available} onChange={(q) => setQty(Math.min(limit, Math.max(1, q)))} label={name} />
+        )}
         {available != null && available <= 5 && <span className="text-sm font-bold text-gold-ink">Only {available} left</span>}
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Button size="lg" onClick={() => cart.add(productId, qty)}>
-          {c.addToCart}
-        </Button>
+        {inCart > 0 ? (
+          <Button size="lg" onClick={() => cart.setOpen(true)}>
+            {c.viewCart}
+          </Button>
+        ) : (
+          <Button
+            size="lg"
+            onClick={() => {
+              cart.add(productId, qty);
+              setQty(1);
+            }}
+          >
+            {c.addToCart}
+          </Button>
+        )}
         <Button
           size="lg"
           variant="outline"
           onClick={() => {
-            cart.add(productId, qty);
+            // Already in the cart: go as is (adding again doubled the quantity).
+            if (inCart === 0) cart.add(productId, qty);
             cart.setOpen(false);
             router.push("/checkout");
           }}

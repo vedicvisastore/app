@@ -1,11 +1,9 @@
 import { OrnamentDivider } from "@/components/site/ornament";
 import Image from "next/image";
-import { ArrowUpRight } from "lucide-react";
 import "./home.css";
 import Link from "next/link";
 import { BoxCard, ProductCard } from "@/components/product/cards";
-import { QuickAdd } from "@/components/product/quick-add";
-import { ButtonLink, Container, Media, Price, ProductArt } from "@/components/ui";
+import { ButtonLink, Container } from "@/components/ui";
 import { socialHandle, socialUrl } from "@/lib/settings-defaults";
 import { inr, launchLabel } from "@/lib/utils";
 import { api } from "@/server/caller";
@@ -13,8 +11,7 @@ import { fmt } from "@/content/defaults";
 import { getSite } from "@/server/site-config";
 import { InstagramBadge, YoutubeBadge } from "@/components/site/social";
 import { SetSwitcher } from "./set-switcher";
-import { FestiveHanging } from "@/components/site/festive-hanging";
-import { HeroSlider } from "./hero-slider";
+import { HeroBanner, type BannerProduct, type BannerSlide } from "./hero-banner";
 import { HomePicks } from "./home-picks";
 
 const ESSENTIAL_ORDER = ["jap-mala", "kanthi-mala", "japa-bags", "tilak-chandan", "itra-fragrance", "japa-accessories", "books"];
@@ -52,60 +49,23 @@ export default async function Home() {
     ...(bestPct > 0 ? [{ kind: "sale" as const, text: `Up to ${bestPct}% off, ${onOffer.length} on offer` }] : []),
     ...(settings.freeShippingThreshold > 0 ? [{ kind: "shipping" as const, text: `Free shipping above ${inr(settings.freeShippingThreshold)}` }] : []),
   ];
-  const heroSlides = [
-    { key: "everyday", label: c.heroEverydayLabel, title: c.heroEverydayTitle, lede: c.heroEverydayLede, href: "/shop", action: c.heroEverydayAction, product: all.find((p) => p.trending && p.image) ?? heroBox ?? all[0], promoWord: "जप", promoTitle: japa.length ? fmt(c.japaTile, { price: inr(Math.min(...japa.map((p) => p.price))) }) : c.heroEverydayLabel, promoHref: japa.length ? "/shop?group=japa-sets" : "/shop", promoAction: japa.length ? c.japaTileLink : c.heroEverydayAction },
-    { key: "japa", label: c.setsJapaTab, title: c.heroJapaTitle, lede: c.heroJapaLede, href: "/shop?group=japa-sets", action: c.japaTileLink, product: japa.find((p) => p.image) ?? japa[0], promoWord: "श्रृंगार", promoTitle: c.setsShringarTab, promoHref: "/shop?group=shringar-kits", promoAction: c.heroShringarAction },
-    { key: "shringar", label: c.setsShringarTab, title: c.heroShringarTitle, lede: c.heroShringarLede, href: "/shop?group=shringar-kits", action: c.heroShringarAction, product: shringar.find((p) => p.image) ?? shringar[0], promoWord: "भक्ति", promoTitle: content.nav.boxes, promoHref: "/shop?group=bhakti-boxes", promoAction: c.heroPrimary },
-    { key: "boxes", label: content.nav.boxes, title: c.heroTitle, lede: c.heroLede, href: "/shop?group=bhakti-boxes", action: c.heroPrimary, product: heroBox, promoWord: "पूजा", promoTitle: singles.length ? fmt(c.heroEssentialsTile, { price: inr(Math.min(...singles.map((p) => p.price))) }) : c.heroEverydayLabel, promoHref: "/shop", promoAction: c.heroEverydayAction },
-  ].filter((slide) => slide.product);
+  // Banner: brand → signature box → japa trio → shringar trio (trios need three products; bestsellers fill a gap).
+  const bp = (p: (typeof all)[number]): BannerProduct => ({ id: p.id, name: p.name, slug: p.slug, image: p.image, price: p.price, mrp: p.mrp, soldOut: p.available === 0, launch: p.upcoming ? launchLabel(p.launchAt) : null });
+  const photoFirst = (list: typeof all) => [...list].sort((a, b) => Number(!!b.image) - Number(!!a.image) || Number(b.pinned) - Number(a.pinned) || b.score - a.score);
+  const signature = boxes.find((b) => b.featured && b.image) ?? heroBox;
+  const trio = (list: typeof all) => photoFirst(list).slice(0, 3);
+  const bannerSlides: BannerSlide[] = [
+    { key: "brand", kind: "brand", scene: "/brand/hero-banner.webp", title: c.heroEverydayTitle, lede: c.heroEverydayLede, href: "/shop", action: c.heroEverydayAction, secondary: { href: "/about", label: c.storyTile }, products: [] },
+    ...(signature ? [{ key: "box", kind: "feature" as const, scene: "/brand/hero-banner-single.webp", label: content.nav.boxes, title: c.heroTitle, lede: c.heroLede, href: "/shop?group=bhakti-boxes", action: c.heroPrimary, products: [bp(signature)] }] : []),
+    ...(japa.length >= 3 ? [{ key: "japa", kind: "trio" as const, scene: "/brand/hero-banner-trio.webp", label: c.setsJapaTab, title: c.heroJapaTitle, href: "/shop?group=japa-sets", action: c.japaTileLink, products: trio(japa).map(bp) }] : []),
+    ...(shringar.length >= 3 ? [{ key: "shringar", kind: "trio" as const, scene: "/brand/hero-banner-trio.webp", label: c.setsShringarTab, title: c.heroShringarTitle, href: "/shop?group=shringar-kits", action: c.heroShringarAction, products: trio(shringar).map(bp) }] : []),
+    ...(japa.length < 3 || shringar.length < 3 ? [{ key: "best", kind: "trio" as const, scene: "/brand/hero-banner-trio.webp", label: c.picksBest, title: c.heroEverydayTitle, href: "/shop", action: c.heroSecondary, products: trio(buyable).map(bp) }].filter((s) => s.products.length === 3) : []),
+  ];
 
   return (
     <div className="home-page">
-      {/* Hero: a bento of the offer, the box, the painting and the sets */}
-      <section className="home-hero relative" aria-label="VedicVisa" data-tint="royal">
-        <FestiveHanging />
-        <Container>
-          <HeroSlider labels={heroSlides.map((slide) => slide.label)}>
-            {heroSlides.map((slide, i) => {
-              const product = slide.product!;
-              return (
-                <div key={slide.key} className={`home-bento home-slide-${slide.key}`}>
-                  <div className="home-intro on-dark">
-                    <span className="home-door arch" aria-hidden />
-                    <div className="home-intro-content">
-                      {i === 0 ? <h1 className="home-hero-title">{slide.title}</h1> : <h2 className="home-hero-title">{slide.title}</h2>}
-                      <p className="home-lead">{slide.lede}</p>
-                      <div className="home-actions">
-                        <ButtonLink href={slide.href} size="lg">{slide.action}</ButtonLink>
-                        <Link href={i === 0 ? (japa.length ? "/shop?group=japa-sets" : "/about") : "/shop"} className="home-secondary">{i === 0 ? (japa.length ? c.japaTileLink : c.storyTile) : c.heroSecondary}</Link>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="home-featured">
-                    <Link href={`/p/${product.slug}`} className="home-featured-image" aria-label={product.name}>
-                      {product.image ? <Media src={product.image} alt={product.name} priority={i === 0} className="h-full w-full object-cover" /> : <ProductArt name={product.name} seed={product.id} />}
-                    </Link>
-                    <div className="home-featured-caption">
-                      <div className="min-w-0"><Link href={`/p/${product.slug}`} className="home-featured-name">{product.name}</Link><Price price={product.price} mrp={product.mrp} size="sm" /></div>
-                      {product.upcoming ? <span className="text-sm font-bold text-gold-ink">{launchLabel(product.launchAt)}</span> : <QuickAdd productId={product.id} name={product.name} disabled={product.available === 0} />}
-                    </div>
-                  </div>
-                  <div className="home-discover">
-                    <Link href="/about" className="home-story-link group">
-                      <Image src="/brand/hero-temple.jpg" alt="A temple by a lotus pond with a peacock" fill sizes="(min-width: 1440px) 280px, (min-width: 1024px) 22vw, 50vw" className="object-cover object-[80%_62%]" />
-                      <span className="home-story-caption"><span>{c.storyTile}</span><ArrowUpRight aria-hidden size={20} /></span>
-                    </Link>
-                    <Link href={slide.promoHref} className="home-japa" data-accent={["gulal", "peacock", "mor", "royal"][i % 4]}>
-                      <span className="home-japa-title">{slide.promoTitle}</span>
-                      <span className="home-japa-action"><span>{slide.promoAction}</span><ArrowUpRight aria-hidden size={20} /></span>
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </HeroSlider>
-        </Container>
-      </section>
+      {/* Hero: full-width banner carousel. The painting stays still; the slides move over it. */}
+      <HeroBanner slides={bannerSlides} />
 
       <HomePicks best={best} offers={onOffer} fresh={fresh} chips={offerChips} />
 
