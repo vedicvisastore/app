@@ -60,15 +60,20 @@ export function HeroBanner({ slides }: { slides: BannerSlide[] }) {
     const sync = () => setReduced(motion.matches);
     const seen = new IntersectionObserver(([e]) => setOnScreen(e.isIntersecting && !document.hidden), { threshold: 0.3 });
     const vis = () => setOnScreen(!document.hidden);
+    // Phones show only the first scene (see hero-banner.css), so the others load only on wide screens.
+    const wide = window.matchMedia("(min-width: 900px)");
+    const widen = () => wide.matches && setWarm(true);
     sync();
-    const w = window.setTimeout(() => setWarm(true), 1200);
+    const w = window.setTimeout(widen, 1200);
     seen.observe(root.current!);
     motion.addEventListener("change", sync);
+    wide.addEventListener("change", widen);
     document.addEventListener("visibilitychange", vis);
     return () => {
       seen.disconnect();
       window.clearTimeout(w);
       motion.removeEventListener("change", sync);
+      wide.removeEventListener("change", widen);
       document.removeEventListener("visibilitychange", vis);
     };
   }, []);

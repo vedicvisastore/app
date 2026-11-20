@@ -189,41 +189,82 @@
   .hb-scene, .hb-rise { transition: none; }
 }
 
-/* Phones and small tablets: scene as a backdrop, content stacked */
+/* Phones and small tablets: one plain scene as the backdrop (the plinth paintings crop to a lone plinth on a tall
+   screen), every slide the same height, copy at the top in the sky, products standing on the stone floor below. */
 @media (max-width: 899px) {
   .hb { height: auto; container-type: normal; }
   .hb-scene { inset: 0; left: 0; top: 0; width: 100%; height: 100%; aspect-ratio: auto; translate: none; }
+  .hb-scene:not(:first-child) { display: none; }
+  .hb-scene:first-child { opacity: 1; }
+  .hb-slide { display: flex; }
   .hb-slide .hb-stage {
     position: relative;
     left: auto;
     top: auto;
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
     align-items: center;
-    gap: 22px;
+    justify-content: space-between;
+    gap: 20px;
     width: 100%;
-    height: 100%;
+    min-height: clamp(470px, 128vw, 580px);
     aspect-ratio: auto;
-    padding: 30px var(--gutter) 66px;
+    padding: 26px var(--gutter) 54px;
     text-align: center;
     translate: none;
   }
   .hb-brand, .hb-copy, .hb-heading { position: static; width: 100%; max-width: 32rem; translate: none; }
-  .hb-copy { display: flex; flex-direction: column; align-items: center; }
   .hb-actions { justify-content: center; }
-  .hb-title { font-size: clamp(2rem, 8.4vw, 2.8rem); }
+  .hb-title { font-size: clamp(1.9rem, 8.4vw, 2.8rem); }
   .hb-label { font-size: 0.8rem; }
-  .hb-lede { font-size: 1rem; }
+  .hb-lede { margin-top: 0.6em; font-size: 1rem; }
   .hb-name { font-size: 0.85rem; }
-  .hb-logo { width: min(52vw, 220px); margin-bottom: 12px; }
-  .hb-feature-line { width: 100%; text-align: left; }
-  .hb-item, .hb-item-feature { position: static; width: auto; translate: none; }
-  .hb-item-feature { order: -1; width: min(52vw, 220px); }
+  .hb-logo { width: min(48vw, 210px); margin-bottom: 10px; }
   .hb-item::before { display: none; }
   .hb-photo { border-radius: 10px; border-width: 3px; box-shadow: 0 14px 24px -14px color-mix(in oklab, #3b2a12 60%, transparent); }
+
+  /* Trio: three photos in a row on the floor */
   .hb-items { position: static; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 32rem; }
+  .hb-item { position: static; width: auto; translate: none; }
   .hb-items .hb-item { transition-delay: 0.25s !important; }
   .hb-tag { position: static; width: auto; margin-top: 8px; padding: 0.4rem; translate: none; }
   .hb-tag .hb-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+  /* Feature: heading on top; photo and its price card side by side on the floor */
+  .hb-slide[data-kind="feature"] .hb-stage {
+    display: grid;
+    grid-template-columns: min(44%, 210px) min(52%, 250px);
+    grid-template-rows: auto auto auto 1fr auto;
+    justify-content: center;
+    align-items: end;
+    gap: 0 14px;
+  }
+  .hb-slide[data-kind="feature"] .hb-copy { display: contents; }
+  .hb-copy > .hb-label { grid-column: 1 / -1; justify-self: center; }
+  .hb-copy > .hb-title { grid-column: 1 / -1; }
+  .hb-copy > .hb-lede { display: none; }
+  .hb-copy > .hb-actions { grid-column: 1 / -1; }
+  .hb-item-feature { grid-column: 1; grid-row: 5; position: static; width: 100%; translate: none; }
+  .hb-feature-line {
+    grid-column: 2;
+    grid-row: 5;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    margin: 0;
+    padding: 12px;
+    text-align: left;
+  }
+  .hb-feature-line > span { width: 100%; }
+  .hb-feature-line .hb-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 4px; }
+  .hb-copy > * { transition: opacity 0.6s ease 0.2s, transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s; }
+  .hb-slide:not([data-active]) .hb-copy > * { opacity: 0; transform: translateY(16px); }
+
   .hb-arrow { display: none; }
+}
+
+@media (max-width: 899px) and (prefers-reduced-motion: reduce) {
+  .hb-copy > * { transition: none; }
 }
