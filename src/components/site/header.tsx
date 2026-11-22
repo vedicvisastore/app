@@ -1,5 +1,5 @@
 "use client";
-import { ChevronDown, ChevronRight, Menu, Search, ShoppingBag, User, X } from "lucide-react";
+import { BadgePercent, CalendarHeart, ChevronDown, ChevronRight, Info, Menu, MessageCircle, Package, RotateCcw, Search, ShoppingBag, Sparkles, Truck, User, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -28,6 +28,7 @@ type Props = {
 
 export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, sets, festivals }: Props) {
   const copy = useContent().nav;
+  const logo = "/brand/logo.png";
   const cart = useCart();
   const router = useRouter();
   const pathname = usePathname();
@@ -264,91 +265,118 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, s
         )}
       </header>
 
-      {/* Mobile menu */}
+      {/* Mobile menu: colourful set tiles, quick links, category chips, help with icons */}
       <div className={cn("fixed inset-0 z-[400] overflow-hidden lg:hidden", !menu && "pointer-events-none invisible")} aria-hidden={!menu}>
-        <div className={cn("absolute inset-0 bg-ink/30 transition-opacity", menu ? "opacity-100" : "opacity-0")} onClick={() => setMenu(false)} />
+        <div className={cn("absolute inset-0 bg-shyam/45 backdrop-blur-[2px] transition-opacity", menu ? "opacity-100" : "opacity-0")} onClick={() => setMenu(false)} />
         <nav
           className={cn(
-            "absolute inset-y-0 left-0 flex w-[86%] max-w-sm flex-col overflow-y-auto bg-paper px-5 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] shadow-float transition-transform duration-[var(--dur-long)] ease-[var(--ease-out)]",
+            "vv-drawer absolute inset-y-0 left-0 flex w-[88%] max-w-sm flex-col overflow-y-auto bg-paper pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] shadow-float transition-transform duration-[var(--dur-long)] ease-[var(--ease-out)]",
             menu ? "translate-x-0" : "-translate-x-full",
           )}
+          data-open={menu || undefined}
           aria-label="Mobile"
         >
-          <div className="mb-4 flex items-center justify-between">
-            <Image src="/brand/logo.png" alt="VedicVisa" width={900} height={591} className="h-11 w-auto" />
-            <button onClick={() => setMenu(false)} className={iconBtn} aria-label="Close menu">
-              <X className="size-5" />
-            </button>
+          {/* Top: logo, close, search, on a soft gradient with the brand edge */}
+          <div className="vv-drawer-top relative px-4 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-4">
+            <div className="mb-3 flex items-center justify-between">
+              <Image src={logo} alt="VedicVisa" width={900} height={591} className="h-12 w-auto" />
+              <button onClick={() => setMenu(false)} className="grid size-10 place-items-center rounded-full bg-paper/80 shadow-lift" aria-label="Close menu">
+                <X className="size-5" />
+              </button>
+            </div>
+            <form onSubmit={submitSearch} role="search">
+              <label className="flex h-12 items-center gap-2 rounded-full border border-line bg-paper px-4 shadow-lift focus-within:border-royal">
+                <Search className="size-4 text-royal" aria-hidden />
+                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={copy.searchPlaceholder} className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-ink-mute" aria-label="Search products" />
+              </label>
+            </form>
           </div>
 
-          <form onSubmit={submitSearch} role="search" className="mb-2">
-            <label className="flex h-11 items-center gap-2 rounded-full border border-line bg-paper-2 px-4 focus-within:border-royal">
-              <Search className="size-4 text-ink-mute" aria-hidden />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={copy.searchPlaceholder} className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-ink-mute" aria-label="Search products" />
-            </label>
-          </form>
-
-          <MobileGroup title={copy.byType}>
-            {sets.map((s) => (
-              <MobileLink key={s.href} href={s.href} big>
-                {s.label}
-              </MobileLink>
-            ))}
-            <MobileLink href="/shop">{copy.shopAll}</MobileLink>
-          </MobileGroup>
-
-          <MobileGroup>
-            {links
-              .filter((l) => !l.href.startsWith("/c/"))
-              .map((l) => (
-                <MobileLink key={l.href} href={l.href} dot={"dot" in l ? l.dot : undefined}>
-                  {l.label}
-                </MobileLink>
-              ))}
-          </MobileGroup>
-
-          {festivals.length > 0 && (
-            <MobileGroup title={copy.festivalsTitle}>
-              {festivals.map((f) => (
-                <MobileLink key={f.slug} href={`/c/${f.slug}`} dot={DOT[f.accent] ?? "bg-gulal"}>
-                  {f.name}
-                </MobileLink>
-              ))}
-            </MobileGroup>
-          )}
-
-          <MobileGroup title={copy.help}>
-            {help.map((h) => (
-              <MobileLink key={h.href} href={h.href}>
-                {h.label}
-              </MobileLink>
-            ))}
-            <MobileLink href="/about">{copy.about}</MobileLink>
-          </MobileGroup>
-
-          {cats.length > 0 && (
-            <MobileGroup title={copy.byCategory}>
-              <div className="flex flex-wrap gap-2 pt-1">
-                {cats.map((c) => (
-                  <Link key={c.slug} href={`/shop?category=${c.slug}`} className="rounded-full border border-line px-3 py-1.5 text-sm text-ink-soft">
-                    {c.name}
-                  </Link>
-                ))}
+          <div className="space-y-6 px-4 pt-5">
+            {/* Sets and single items as bold colour tiles */}
+            <section>
+              <div className="mb-2.5 flex items-baseline justify-between">
+                <p className="vv-drawer-kicker">{copy.byType}</p>
+                <Link href="/shop" className="inline-flex items-center gap-0.5 text-sm font-bold text-royal">
+                  {copy.shopAll} <ChevronRight className="size-4" aria-hidden />
+                </Link>
               </div>
-            </MobileGroup>
-          )}
+              <ul className="grid grid-cols-2 gap-2.5">
+                {sets.map((s, i) => {
+                  const t = TILE[i % TILE.length];
+                  return (
+                    <li key={s.href} className="vv-drawer-item" style={{ ["--i" as string]: i }}>
+                      <Link href={s.href} className={cn("relative flex h-24 flex-col justify-end overflow-hidden rounded-2xl p-3 transition-transform active:scale-[0.97]", t)}>
+                        <span className="deva pointer-events-none absolute -top-2 -right-1 text-[3.4rem] leading-none opacity-20" lang="sa" aria-hidden>
+                          {SET_WORD[s.slug] ?? "॥"}
+                        </span>
+                        <span className="relative font-display text-[1.15rem] leading-tight">{s.label}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
 
-          <div className="mt-6 flex flex-col gap-3 border-t border-line pt-5">
-            <Link href={signedIn ? "/account" : "/login"} className="font-bold text-royal">
-              {signedIn ? "Your Account and Orders" : "Log In"}
-            </Link>
-            {isAdmin && (
-              <Link href="/admin" className="font-bold text-gold-ink">
-                Admin Panel
-              </Link>
+            {/* New, deals and live custom pages as quick pills */}
+            <section className="vv-drawer-item flex flex-wrap gap-2" style={{ ["--i" as string]: sets.length }}>
+              {links.map((l) => {
+                const Icon = l.href === "/new" ? Sparkles : l.href === "/deals" ? BadgePercent : CalendarHeart;
+                return (
+                  <Link key={l.href} href={l.href} className={cn("inline-flex h-10 items-center gap-1.5 rounded-full border px-4 text-sm font-bold", l.href === "/deals" ? "border-gulal/30 bg-gulal-soft text-gulal" : "border-line bg-paper-2 text-ink")}>
+                    <Icon className="size-4" aria-hidden />
+                    {l.label}
+                  </Link>
+                );
+              })}
+            </section>
+
+            {cats.length > 0 && (
+              <section className="vv-drawer-item" style={{ ["--i" as string]: sets.length + 1 }}>
+                <p className="vv-drawer-kicker mb-2.5">{copy.byCategory}</p>
+                <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+                  {cats.map((c, i) => (
+                    <Link key={c.slug} href={`/shop?category=${c.slug}`} className={cn("shrink-0 rounded-full border-2 bg-paper px-3.5 py-2 text-sm font-bold whitespace-nowrap text-ink", CHIP[i % CHIP.length])}>
+                      {c.name}
+                    </Link>
+                  ))}
+                </div>
+              </section>
             )}
+
+            <section className="vv-drawer-item" style={{ ["--i" as string]: sets.length + 2 }}>
+              <p className="vv-drawer-kicker mb-1.5">{copy.help}</p>
+              <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-paper-2/60">
+                {[...help, { href: "/about", label: copy.about }].map((h) => {
+                  const Icon = HELP_ICON[h.href.split("?")[0]] ?? Info;
+                  return (
+                    <li key={h.href}>
+                      <Link href={h.href} className="flex items-center gap-3 px-3.5 py-3 text-[0.98rem] text-ink active:bg-sky">
+                        <span className="grid size-8 place-items-center rounded-full bg-paper text-royal shadow-lift">
+                          <Icon className="size-4" aria-hidden />
+                        </span>
+                        <span className="flex-1">{h.label}</span>
+                        <ChevronRight className="size-4 text-ink-mute" aria-hidden />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+
+            <div className="vv-drawer-item flex flex-col gap-2" style={{ ["--i" as string]: sets.length + 3 }}>
+              <Link href={signedIn ? "/account" : "/login"} className="flex h-12 items-center justify-center gap-2 rounded-full bg-gold font-bold text-shyam shadow-lift">
+                <User className="size-4" aria-hidden /> {signedIn ? "Your Account and Orders" : "Log In"}
+              </Link>
+              {isAdmin && (
+                <Link href="/admin" className="flex h-11 items-center justify-center rounded-full border border-line font-bold text-gold-ink">
+                  Admin Panel
+                </Link>
+              )}
+            </div>
           </div>
-          <p className="deva mt-auto pt-8 text-2xl text-gulal" lang="sa">
+
+          <p className="deva mt-auto px-4 pt-8 text-center text-2xl text-gulal" lang="sa">
             धार्यते इति धर्मः
           </p>
         </nav>
@@ -357,23 +385,11 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, s
   );
 }
 
-function MobileGroup({ title, children }: { title?: string; children: React.ReactNode }) {
-  return (
-    <div className="border-b border-line py-3">
-      {title && <p className="text-xs font-bold tracking-[0.08em] uppercase pt-1 pb-1 text-ink-mute">{title}</p>}
-      {children}
-    </div>
-  );
-}
-
-function MobileLink({ href, children, big, dot }: { href: string; children: React.ReactNode; big?: boolean; dot?: string }) {
-  return (
-    <Link href={href} className={cn("flex items-center gap-2.5 py-2.5 text-ink", big ? "font-display text-2xl" : "text-[1.05rem]")}>
-      {dot && <span className={cn("size-2 rounded-full", dot)} aria-hidden />}
-      {children}
-    </Link>
-  );
-}
+/** Phone menu tiles cycle through the brand colours; each set gets its Sanskrit word as a watermark. */
+const TILE = ["bg-royal text-white", "bg-peacock text-white", "bg-gulal text-white", "bg-mor text-white", "bg-gold text-shyam"];
+const CHIP = ["border-royal/25", "border-peacock/30", "border-gulal/30", "border-gold/50", "border-mor/30"];
+const SET_WORD: Record<string, string> = { "bhakti-boxes": "भक्ति", items: "माला", "japa-sets": "जप", "shringar-kits": "श्रृंगार" };
+const HELP_ICON: Record<string, typeof Truck> = { "/track": Truck, "/account": Package, "/login": Package, "/contact": MessageCircle, "/shipping": RotateCcw, "/about": Info };
 
 /** Desktop menu item with a panel: opens on hover or click, closes on leave, Escape, outside click or navigation. */
 function Dropdown({ label, active, pathname, wide, alignRight, children }: { label: string; active: boolean; pathname: string; wide?: boolean; alignRight?: boolean; children: React.ReactNode }) {

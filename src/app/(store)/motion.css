@@ -96,3 +96,17 @@
   main article h3 a { display: inline-block; transition: transform 0.2s cubic-bezier(.2,.8,.2,1), color 0.2s ease; transform-origin: left center; }
   main article:hover h3 a { transform: scale(1.03); color: var(--color-ink); }
 }
+
+/* Phone menu (header.tsx): gradient top with the brand edge, small caps kickers, items rise in one after another. */
+.vv-drawer-top {
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in oklab, var(--color-gold) 30%, transparent), transparent 60%),
+    radial-gradient(90% 80% at 100% 10%, color-mix(in oklab, var(--color-peacock) 22%, transparent), transparent 65%),
+    color-mix(in oklab, var(--color-gulal) 8%, var(--color-paper));
+}
+.vv-drawer-top::after { content: ""; position: absolute; inset: auto 0 0; height: 3px; background: linear-gradient(90deg, var(--color-peacock), var(--color-royal) 30%, var(--color-gold) 55%, var(--color-gulal) 80%, var(--color-peacock)); }
+.vv-drawer-kicker { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-gulal); }
+@media (prefers-reduced-motion: no-preference) {
+  .vv-drawer .vv-drawer-item { opacity: 0; transform: translateY(10px); transition: opacity 0.35s ease, transform 0.45s cubic-bezier(.2,.8,.2,1); }
+  .vv-drawer[data-open] .vv-drawer-item { opacity: 1; transform: none; transition-delay: calc(0.08s + var(--i, 0) * 0.045s); }
+}

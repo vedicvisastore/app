@@ -10,8 +10,8 @@ export const CONTENT_GROUPS = [
     label: "Header and menu",
     fields: {
       boxes: { label: "Menu: boxes", value: "Bhakti Boxes" },
-      japa: { label: "Menu: japa", value: "Japa" },
-      shringar: { label: "Menu: shringar", value: "Shringar" },
+      japa: { label: "Menu: japa", value: "Japa Sets" },
+      shringar: { label: "Menu: shringar", value: "Shringar Kits" },
       shopAll: { label: "Menu: shop all", value: "Shop All" },
       shop: { label: "Menu: shop", value: "Shop" },
       newLaunches: { label: "Menu: new launches", value: "New Launches" },
