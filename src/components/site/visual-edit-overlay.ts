@@ -12,7 +12,8 @@ import { decodeTag, TAG_RE } from "@/lib/stega";
 type Msg =
   | { type: "vv:mode"; mode: "edit" | "browse" }
   | { type: "vv:set"; key: string; value: string }
-  | { type: "vv:select"; key: string | null };
+  | { type: "vv:select"; key: string | null }
+  | { type: "vv:img"; key: string; src: string };
 
 const KEY_ATTR = "data-vv-key";
 const ATTRS = ["placeholder", "aria-label", "title", "alt"] as const;
@@ -34,6 +35,9 @@ export function start() {
     html.vv-editing [${KEY_ATTR}] { outline: 1.5px dashed color-mix(in oklab, var(--color-gulal) 65%, transparent); outline-offset: 2px; border-radius: 3px; cursor: text; }
     html.vv-editing [${KEY_ATTR}]:hover { outline-style: solid; background-color: color-mix(in oklab, var(--color-gold) 22%, transparent); }
     html.vv-editing [${KEY_ATTR}].vv-selected { outline: 2.5px solid var(--color-royal); }
+    html.vv-editing img[data-vv-img] { outline: 2px dashed color-mix(in oklab, var(--color-royal) 70%, transparent); outline-offset: 2px; cursor: pointer; }
+    html.vv-editing img[data-vv-img]:hover { outline-style: solid; filter: brightness(1.05); }
+    html.vv-editing img[data-vv-img].vv-selected { outline: 3px solid var(--color-royal); }
     html.vv-editing [data-pid], html.vv-editing [data-vv-section] { position: relative; }
     html.vv-editing [data-pid]:hover::after, html.vv-editing [data-vv-section]:hover::after {
       content: attr(data-vv-chip); position: absolute; top: 8px; right: 8px; z-index: 50; pointer-events: none;
@@ -107,15 +111,20 @@ export function start() {
       if (mode !== "edit") return;
       const target = e.target as Element | null;
       const textEl = target?.closest(`[${KEY_ATTR}]`);
+      const img = target?.closest("img[data-vv-img]");
       const product = target?.closest("[data-pid]");
       const section = target?.closest("[data-vv-section]");
-      if (!textEl && !product && !section) return;
+      if (!textEl && !img && !product && !section) return;
       e.preventDefault();
       e.stopPropagation();
       if (textEl && (!product || product.contains(textEl))) {
         document.querySelectorAll(".vv-selected").forEach((x) => x.classList.remove("vv-selected"));
         textEl.classList.add("vv-selected");
         post({ type: "vv:edit", key: textEl.getAttribute(KEY_ATTR) });
+      } else if (img) {
+        document.querySelectorAll(".vv-selected").forEach((x) => x.classList.remove("vv-selected"));
+        img.classList.add("vv-selected");
+        post({ type: "vv:image", key: img.getAttribute("data-vv-img") });
       } else if (product) post({ type: "vv:open", href: `/admin/products/${product.getAttribute("data-pid")}` });
       else if (section) post({ type: "vv:open", href: section.getAttribute("data-vv-section") });
     },
@@ -139,9 +148,15 @@ export function start() {
       if (/\{\w+\}/.test(m.value)) return;
       for (const t of nodes.get(m.key) ?? []) if (t.isConnected) t.nodeValue = m.value;
       document.querySelectorAll(`[${KEY_ATTR}="${CSS.escape(m.key)}"][placeholder]`).forEach((el) => el.setAttribute("placeholder", m.value));
+    } else if (m.type === "vv:img") {
+      if (!/^(\/(?!\/)|https:\/\/)/.test(m.src)) return;
+      document.querySelectorAll<HTMLImageElement>(`img[data-vv-img="${CSS.escape(m.key)}"]`).forEach((el) => {
+        el.removeAttribute("srcset");
+        el.src = m.src;
+      });
     } else if (m.type === "vv:select") {
       document.querySelectorAll(".vv-selected").forEach((x) => x.classList.remove("vv-selected"));
-      if (m.key) document.querySelector(`[${KEY_ATTR}="${CSS.escape(m.key)}"]`)?.classList.add("vv-selected");
+      if (m.key) document.querySelector(`[${KEY_ATTR}="${CSS.escape(m.key)}"], img[data-vv-img="${CSS.escape(m.key)}"]`)?.classList.add("vv-selected");
     }
   });
 }

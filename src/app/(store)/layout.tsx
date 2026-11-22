@@ -31,7 +31,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
         festivals={festivals.filter((f) => f.showInMenu).slice(0, 2).map((f) => ({ name: f.name, slug: f.slug, accent: f.accent }))}
       />
       <main id="main" className="pb-[var(--section-gap-s)]">{children}</main>
-      <Footer settings={settings} categories={categories} sets={sets} copy={site.content.footer} />
+      <Footer settings={settings} categories={categories} sets={sets} copy={site.content.footer} logo={site.images["brand.logoRound"]} />
       <CartDrawer />
       <FramedNoScrollbar />
       {(site.previewing || site.editing) && <PreviewScrollKeeper />}

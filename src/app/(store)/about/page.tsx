@@ -6,12 +6,13 @@ import { getSite } from "@/server/site-config";
 export const metadata: Metadata = { title: "Our story" };
 
 export default async function About() {
-  const c = (await getSite()).content.about;
+  const site = await getSite();
+  const c = site.content.about;
   return (
     <Container className="grid items-center gap-12 pt-14 md:grid-cols-2">
       <div className="arch-frame mx-auto w-full max-w-[380px]">
         <div className="arch relative aspect-[4/5] overflow-hidden">
-          <Image src="/brand/hero-temple.jpg" alt="" fill className="object-cover" sizes="380px" />
+          <Image src={site.images["about.art"]} data-vv-img="about.art" alt="" fill className="object-cover" sizes="380px" />
         </div>
       </div>
       <div className="max-w-xl">

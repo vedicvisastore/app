@@ -19,7 +19,7 @@ export default async function Shop({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const sort = (["trending", "price-asc", "price-desc", "new"] as const).find((s) => s === sp.sort) ?? "trending";
   const trpc = await api();
-  const [list, categories, { content }, live] = await Promise.all([
+  const [list, categories, { content, images }, live] = await Promise.all([
     trpc.catalog.list({ category: sp.category, group: sp.group, q: sp.q?.slice(0, 80), sort, inStock: sp.stock === "1" }),
     trpc.catalog.categories(),
     getSite(),
@@ -97,7 +97,7 @@ export default async function Shop({ searchParams }: { searchParams: SP }) {
         {list.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-center sm:py-20">
             {/* Little makhan-pot monkey (owner's artwork, background cut out) */}
-            <Image src="/brand/makhan-monkey.webp" alt="" width={520} height={789} className="vv-rise mb-6 h-auto w-36 sm:w-44" />
+            <Image src={images["shop.emptyArt"]} data-vv-img="shop.emptyArt" alt="" width={520} height={789} className="vv-rise mb-6 h-auto w-36 sm:w-44" />
             <p className="font-display text-3xl">{c.emptyTitle}</p>
             <p className="mt-2 max-w-sm text-ink-soft">{c.emptyBody}</p>
             <ButtonLink href="/shop" className="mt-6">

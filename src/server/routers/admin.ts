@@ -28,6 +28,7 @@ import { getSite } from "../site-config";
 import { env } from "../env";
 import { nextStates } from "@/lib/order-machine";
 import { CONTENT_KEYS } from "@/content/defaults";
+import { DEFAULT_IMAGES, isImageKey, safeImageSrc } from "@/content/images";
 import { THEMES } from "@/lib/themes";
 import { getSiteConfig, saveSiteConfig, siteConfigStorage } from "../site-config";
 import { transitionOrder } from "../order-transition";
@@ -272,7 +273,7 @@ export const adminRouter = router({
   // ── Look and copy (saved as one JSON file in R2, not the database) ──
   siteConfig: adminProcedure.query(async () => {
     const cfg = await getSiteConfig();
-    return { theme: cfg.theme, customTheme: cfg.customTheme, content: cfg.content, updatedAt: cfg.updatedAt ?? null, storage: siteConfigStorage() };
+    return { theme: cfg.theme, customTheme: cfg.customTheme, content: cfg.content, images: cfg.images ?? {}, updatedAt: cfg.updatedAt ?? null, storage: siteConfigStorage() };
   }),
   saveTheme: adminProcedure
     .input(
@@ -323,6 +324,21 @@ export const adminRouter = router({
       const cfg = await getSiteConfig();
       await saveSiteConfig({ ...cfg, content: clean });
       return { ok: true, saved: Object.keys(clean).length };
+    }),
+  /** Store pictures (logo, paintings) swapped in the visual editor. Only changed ones are stored. */
+  saveImages: adminProcedure
+    .input(z.object({ images: z.record(z.string(), z.string().max(500)) }))
+    .mutation(async ({ input }) => {
+      const clean: Record<string, string> = {};
+      for (const [k, v] of Object.entries(input.images)) {
+        if (!isImageKey(k)) continue;
+        const src = safeImageSrc(v.trim());
+        if (v.trim() && !src) throw new TRPCError({ code: "BAD_REQUEST", message: "That picture link isn't allowed. Upload the picture instead." });
+        if (src && src !== DEFAULT_IMAGES[k]) clean[k] = src;
+      }
+      const cfg = await getSiteConfig();
+      await saveSiteConfig({ ...cfg, images: clean });
+      return { ok: true };
     }),
 
   // ── Stock ledger ───────────────────────────────────────

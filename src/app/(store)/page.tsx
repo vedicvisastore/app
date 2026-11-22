@@ -19,7 +19,7 @@ const ESSENTIAL_ORDER = ["jap-mala", "kanthi-mala", "japa-bags", "tilak-chandan"
 
 export default async function Home() {
   const trpc = await api();
-  const [all, settings, { content }, deals, categories] = await Promise.all([trpc.catalog.list({}), trpc.catalog.settings(), getSite(), trpc.catalog.deals(), trpc.catalog.categories()]);
+  const [all, settings, { content, images }, deals, categories] = await Promise.all([trpc.catalog.list({}), trpc.catalog.settings(), getSite(), trpc.catalog.deals(), trpc.catalog.categories()]);
   const c = content.home;
   const boxes = all.filter((p) => p.bundleGroup === "Bhakti Boxes");
   const japa = all.filter((p) => p.bundleGroup === "Japa Sets");
@@ -167,7 +167,7 @@ export default async function Home() {
           <div className="home-philosophy-art">
             <div className="arch-frame">
               <div className="arch relative aspect-[4/5] overflow-hidden">
-                <Image src="/brand/hero-temple.jpg" alt="A temple by a lotus pond, with a peacock and a resting cow and calf" fill sizes="(min-width: 1024px) 420px, 80vw" className="object-cover object-[50%_62%]" />
+                <Image src={images["home.templeArt"]} data-vv-img="home.templeArt" alt="A temple by a lotus pond, with a peacock and a resting cow and calf" fill sizes="(min-width: 1024px) 420px, 80vw" className="object-cover object-[50%_62%]" />
               </div>
             </div>
           </div>

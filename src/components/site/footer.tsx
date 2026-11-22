@@ -19,7 +19,7 @@ function Column({ title, children }: { title: string; children: React.ReactNode 
   );
 }
 
-export function Footer({ settings, categories = [], sets = [], copy }: { settings: StoreSettings; categories?: { slug: string; name: string }[]; sets?: ShopLink[]; copy: SiteContent["footer"] }) {
+export function Footer({ settings, categories = [], sets = [], copy, logo = "/brand/logo-round.jpg" }: { settings: StoreSettings; categories?: { slug: string; name: string }[]; sets?: ShopLink[]; copy: SiteContent["footer"]; logo?: string }) {
   const ig = socialUrl("instagram", settings.instagram);
   const yt = socialUrl("youtube", settings.youtube);
   const creator = socialUrl("instagram", settings.creatorInstagram);
@@ -29,7 +29,7 @@ export function Footer({ settings, categories = [], sets = [], copy }: { setting
       <OrnamentDivider kind="diya" className="footer-ornament" />
       <Container className="relative grid gap-x-[var(--gap-columns)] gap-y-12 pt-16 pb-12 lg:grid-cols-12 lg:pt-20">
         <div className="flex items-start gap-5 lg:col-span-5">
-          <Image src="/brand/logo-round.jpg" alt="VedicVisa" width={512} height={512} className="size-20 shrink-0 rounded-full sm:size-24" />
+          <Image src={logo} data-vv-img="brand.logoRound" alt="VedicVisa" width={512} height={512} className="size-20 shrink-0 rounded-full sm:size-24" />
           <div className="min-w-0">
             <p className="deva text-[1.75rem] leading-tight text-gold" lang="sa">
               धार्यते इति धर्मः

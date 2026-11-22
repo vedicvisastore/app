@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QuickAdd } from "@/components/product/quick-add";
-import { useContent } from "@/components/site/content-context";
+import { useContent, useImages } from "@/components/site/content-context";
 import { ButtonLink, Media, Price, ProductArt } from "@/components/ui";
 import { isVideo } from "@/lib/utils";
 import "./hero-banner.css";
@@ -213,6 +213,7 @@ export function HeroBanner({ slides }: { slides: BannerSlide[] }) {
 }
 
 function SlideBody({ s, heading: H, eager }: { s: BannerSlide; heading: "h1" | "h2" | "p"; eager: boolean }) {
+  const logo = useImages()["brand.logo"];
   const actions = (
     <div className="hb-actions">
       <ButtonLink href={s.href} size="lg">
@@ -229,7 +230,7 @@ function SlideBody({ s, heading: H, eager }: { s: BannerSlide; heading: "h1" | "
   if (s.kind === "brand")
     return (
       <div className="hb-brand hb-rise">
-        <Image src="/brand/logo.png" alt="VedicVisa" width={900} height={591} priority={eager} className="hb-logo" />
+        <Image src={logo} data-vv-img="brand.logo" alt="VedicVisa" width={900} height={591} priority={eager} className="hb-logo" />
         <H className="hb-title">{s.title}</H>
         {s.lede && <p className="hb-lede">{s.lede}</p>}
         {actions}

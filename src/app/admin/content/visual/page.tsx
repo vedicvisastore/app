@@ -1,10 +1,12 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, Monitor, MousePointerClick, Pencil, RotateCcw, Smartphone, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, ImageUp, Monitor, MousePointerClick, Pencil, RotateCcw, Smartphone, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, PageLoader, Spinner } from "@/components/ui";
 import { CONTENT_GROUPS } from "@/content/defaults";
+import { DEFAULT_IMAGES, IMAGE_SLOTS, isImageKey, type ImageKey } from "@/content/images";
+import { useUploadFile } from "../../_upload";
 import { useTRPC } from "@/lib/trpc/client";
 import { cn, storeHref } from "@/lib/utils";
 import { useToast } from "../../_ui";
@@ -60,10 +62,14 @@ export default function VisualEditorPage() {
   const box = products.data?.find((p) => p.kind === "bundle");
   const item = products.data?.find((p) => p.kind === "single");
   const pages = [...PAGES.slice(0, 2), ...(box ? [{ path: `/p/${box.slug}`, label: "A box page" }] : []), ...(item ? [{ path: `/p/${item.slug}`, label: "An item page" }] : []), ...PAGES.slice(2)];
-  return <Editor saved={data.content ?? {}} pages={pages} />;
+  return <Editor saved={data.content ?? {}} savedImages={data.images ?? {}} pages={pages} />;
 }
 
-function Editor({ saved, pages }: { saved: Record<string, string>; pages: { path: string; label: string }[] }) {
+const IMAGE_KEYS = Object.keys(IMAGE_SLOTS) as ImageKey[];
+/** Saved picture overrides → full map (missing = the original picture). */
+const fullImages = (over: Record<string, string>) => Object.fromEntries(IMAGE_KEYS.map((k) => [k, over[k] || DEFAULT_IMAGES[k]])) as Record<ImageKey, string>;
+
+function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; savedImages: Record<string, string>; pages: { path: string; label: string }[] }) {
   const trpc = useTRPC();
   const qc = useQueryClient();
   const toast = useToast();
@@ -79,7 +85,13 @@ function Editor({ saved, pages }: { saved: Record<string, string>; pages: { path
   const [loading, setLoading] = useState(true);
   const current = useMemo(() => clean(edits), [edits]);
   const draftJson = JSON.stringify(current);
-  const unsaved = draftJson !== base;
+  // Pictures: what is saved, and what the owner has picked since.
+  const [imgBase, setImgBase] = useState(() => fullImages(savedImages));
+  const [imgs, setImgs] = useState(() => fullImages(savedImages));
+  const imgsChanged = IMAGE_KEYS.filter((k) => imgs[k] !== imgBase[k]);
+  const upload = useUploadFile();
+  const [uploading, setUploading] = useState(false);
+  const unsaved = draftJson !== base || imgsChanged.length > 0;
   const changedCount = Object.keys(current).length;
 
   const storeOrigin = useMemo(() => {
@@ -100,13 +112,19 @@ function Editor({ saved, pages }: { saved: Record<string, string>; pages: { path
         setLoading(false);
         if (m.path) setShownPath(m.path);
         send({ type: "vv:mode", mode });
-      } else if (m.type === "vv:edit" && m.key && BY_KEY.has(m.key)) setSelected(m.key);
+        // Unsaved pictures aren't on the server yet: put them back into every page that loads.
+        for (const k of imgsChangedRef.current) send({ type: "vv:img", key: k, src: imgsRef.current[k] });
+      } else if ((m.type === "vv:edit" && m.key && BY_KEY.has(m.key)) || (m.type === "vv:image" && m.key && isImageKey(m.key))) setSelected(m.key!);
       else if (m.type === "vv:open" && m.href?.startsWith("/admin/")) window.open(m.href, "_blank", "noopener");
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, [mode, send, storeOrigin]);
 
+  const imgsRef = useRef(imgs);
+  const imgsChangedRef = useRef(imgsChanged);
+  imgsRef.current = imgs;
+  imgsChangedRef.current = imgsChanged;
   useEffect(() => send({ type: "vv:mode", mode }), [mode, send]);
   useEffect(() => send({ type: "vv:select", key: selected }), [selected, send]);
 
@@ -143,18 +161,46 @@ function Editor({ saved, pages }: { saved: Record<string, string>; pages: { path
     else send({ type: "vv:set", key, value: shown });
   };
 
-  const save = useMutation(
-    trpc.admin.saveContent.mutationOptions({
-      onSuccess: () => {
-        setBase(draftJson);
-        qc.invalidateQueries({ queryKey: trpc.admin.siteConfig.queryKey() });
-        toast("Saved. Shoppers see the new text now.");
-      },
-      onError: (e) => toast(e.message, "error"),
-    }),
-  );
+  const saveText = useMutation(trpc.admin.saveContent.mutationOptions());
+  const saveImgs = useMutation(trpc.admin.saveImages.mutationOptions());
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    setSaving(true);
+    try {
+      // Text and pictures live in the same file: save one after the other, never at the same time.
+      if (draftJson !== base) await saveText.mutateAsync({ content: current });
+      if (imgsChanged.length) await saveImgs.mutateAsync({ images: Object.fromEntries(IMAGE_KEYS.map((k) => [k, imgs[k]])) });
+      setBase(draftJson);
+      setImgBase(imgs);
+      qc.invalidateQueries({ queryKey: trpc.admin.siteConfig.queryKey() });
+      toast("Saved. Shoppers see the changes now.");
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setImage = (key: ImageKey, src: string) => {
+    setImgs((x) => ({ ...x, [key]: src }));
+    send({ type: "vv:img", key, src });
+  };
+  const pickFile = async (key: ImageKey, file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return toast("Choose a picture (JPG, PNG or WebP).", "error");
+    setUploading(true);
+    try {
+      setImage(key, await upload(file));
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const discard = () => {
+    for (const k of imgsChanged) send({ type: "vv:img", key: k, src: imgBase[k] });
+    setImgs(imgBase);
     const back = JSON.parse(base) as Record<string, string>;
     setEdits(back);
     setSelected(null);
@@ -170,6 +216,7 @@ function Editor({ saved, pages }: { saved: Record<string, string>; pages: { path
   };
 
   const field = selected ? BY_KEY.get(selected) : null;
+  const slotKey = selected && isImageKey(selected) ? selected : null;
   const value = field ? (edits[field.key] ?? field.value) : "";
 
   return (
@@ -221,8 +268,8 @@ function Editor({ saved, pages }: { saved: Record<string, string>; pages: { path
               Discard
             </Button>
           )}
-          <Button size="sm" disabled={!unsaved || save.isPending} onClick={() => save.mutate({ content: current })}>
-            {save.isPending ? <Spinner /> : "Save"}
+          <Button size="sm" disabled={!unsaved || saving || uploading} onClick={save}>
+            {saving ? <Spinner /> : "Save"}
           </Button>
         </div>
       </div>
@@ -237,10 +284,39 @@ function Editor({ saved, pages }: { saved: Record<string, string>; pages: { path
             "z-10 flex flex-col border-line bg-paper",
             "max-lg:absolute max-lg:inset-x-0 max-lg:bottom-0 max-lg:max-h-[60%] max-lg:rounded-t-3xl max-lg:border-t max-lg:shadow-float max-lg:pb-[env(safe-area-inset-bottom,0px)]",
             "lg:w-[380px] lg:shrink-0 lg:border-l",
-            !field && "max-lg:hidden",
+            !field && !slotKey && "max-lg:hidden",
           )}
         >
-          {field ? (
+          {slotKey ? (
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-xs font-bold tracking-[0.06em] text-ink-mute uppercase">Picture · {IMAGE_SLOTS[slotKey].where}</p>
+                  <p className="font-bold">{IMAGE_SLOTS[slotKey].label}</p>
+                </div>
+                <button type="button" onClick={() => setSelected(null)} className="grid size-9 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-sky" aria-label="Close">
+                  <X className="size-4" />
+                </button>
+              </div>
+              <div className="grid place-items-center rounded-xl bg-paper-2 p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imgs[slotKey]} alt="" className="max-h-56 w-auto max-w-full rounded-lg object-contain" />
+              </div>
+              <p className="mt-2 text-xs text-ink-soft">{IMAGE_SLOTS[slotKey].hint} Up to 10 MB.</p>
+              <label className={cn("mt-3 inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-gold px-5 text-sm font-bold text-shyam hover:brightness-95", uploading && "pointer-events-none opacity-60")}>
+                {uploading ? <Spinner /> : <ImageUp className="size-4" aria-hidden />} {uploading ? "Uploading…" : "Upload a new picture"}
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" className="sr-only" onChange={(e) => { void pickFile(slotKey, e.target.files?.[0]); e.target.value = ""; }} />
+              </label>
+              {imgs[slotKey] !== DEFAULT_IMAGES[slotKey] && (
+                <button type="button" onClick={() => setImage(slotKey, DEFAULT_IMAGES[slotKey])} className="mt-3 inline-flex items-center gap-1 self-start text-xs font-bold text-royal">
+                  <RotateCcw className="size-3.5" aria-hidden /> Use the original picture
+                </button>
+              )}
+              <Button size="sm" variant="outline" className="mt-4 self-start" onClick={() => setSelected(null)}>
+                Done
+              </Button>
+            </div>
+          ) : field ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
               <div className="mb-3 flex items-start justify-between gap-2">
                 <div>
@@ -281,10 +357,25 @@ function Editor({ saved, pages }: { saved: Record<string, string>; pages: { path
               <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm text-ink-soft">
                 <li>Every text you can change has a dotted outline. Tap it to edit it here.</li>
                 <li>It changes in the page as you type. Nothing changes for shoppers until you press Save.</li>
+                <li>Tap the logo or a painting to change the picture.</li>
                 <li>Tap a product to edit it, or the banner, ribbon or Shop menu to open their own editors.</li>
                 <li>Switch to Browse to follow links and visit other pages.</li>
               </ol>
-              <p className="mt-6 font-bold">Changed ({changedCount})</p>
+              <p className="mt-6 font-bold">Pictures</p>
+              <ul className="mt-2 grid grid-cols-3 gap-2">
+                {IMAGE_KEYS.map((k) => (
+                  <li key={k}>
+                    <button type="button" onClick={() => setSelected(k)} className="w-full rounded-lg p-1 text-left hover:bg-sky" title={IMAGE_SLOTS[k].where}>
+                      <span className="grid aspect-square place-items-center overflow-hidden rounded-md bg-paper-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imgs[k]} alt="" className="max-h-full max-w-full object-contain" />
+                      </span>
+                      <span className="mt-1 block truncate text-xs">{IMAGE_SLOTS[k].label}{imgsChanged.includes(k) && " •"}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-6 font-bold">Changed text ({changedCount})</p>
               <ul className="mt-2 space-y-1">
                 {Object.keys(current).map((k) => (
                   <li key={k}>

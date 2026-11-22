@@ -8,7 +8,7 @@ import type { RibbonItem } from "@/lib/settings-defaults";
 import type { ShopLink } from "@/lib/shop-links";
 import { cn } from "@/lib/utils";
 import { useCart } from "../cart/cart-context";
-import { useContent } from "./content-context";
+import { useContent, useImages } from "./content-context";
 
 export type MenuFestival = { name: string; slug: string; accent: string };
 export type MenuCategory = { name: string; slug: string };
@@ -28,7 +28,7 @@ type Props = {
 
 export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, sets, festivals }: Props) {
   const copy = useContent().nav;
-  const logo = "/brand/logo.png";
+  const logo = useImages()["brand.logo"];
   const cart = useCart();
   const router = useRouter();
   const pathname = usePathname();
@@ -135,7 +135,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, s
           </div>
 
           <Link href="/" className="justify-self-center" aria-label="VedicVisa home">
-            <Image src="/brand/logo.png" alt="VedicVisa" width={900} height={591} priority className="h-[66px] w-auto sm:h-[74px] lg:h-[100px]" />
+            <Image src={logo} data-vv-img="brand.logo" alt="VedicVisa" width={900} height={591} priority className="h-[66px] w-auto sm:h-[74px] lg:h-[100px]" />
           </Link>
 
           <div className="flex items-center justify-end gap-1">
@@ -279,7 +279,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, s
           {/* Top: logo, close, search, on a soft gradient with the brand edge */}
           <div className="vv-drawer-top relative px-4 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-4">
             <div className="mb-3 flex items-center justify-between">
-              <Image src={logo} alt="VedicVisa" width={900} height={591} className="h-12 w-auto" />
+              <Image src={logo} data-vv-img="brand.logo" alt="VedicVisa" width={900} height={591} className="h-12 w-auto" />
               <button onClick={() => setMenu(false)} className="grid size-10 place-items-center rounded-full bg-paper/80 shadow-lift" aria-label="Close menu">
                 <X className="size-5" />
               </button>

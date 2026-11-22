@@ -34,7 +34,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <TRPCReactProvider>
-          <ContentProvider content={site.content}>
+          <ContentProvider content={site.content} images={site.images}>
             <CartProvider>{children}</CartProvider>
           </ContentProvider>
         </TRPCReactProvider>
