@@ -334,7 +334,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, s
             {cats.length > 0 && (
               <section className="vv-drawer-item" style={{ ["--i" as string]: sets.length + 1 }}>
                 <p className="vv-drawer-kicker mb-2.5">{copy.byCategory}</p>
-                <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+                <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1.5">
                   {cats.map((c, i) => (
                     <Link key={c.slug} href={`/shop?category=${c.slug}`} className={cn("shrink-0 rounded-full border-2 bg-paper px-3.5 py-2 text-sm font-bold whitespace-nowrap text-ink", CHIP[i % CHIP.length])}>
                       {c.name}

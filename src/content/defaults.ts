@@ -70,7 +70,7 @@ export const CONTENT_GROUPS = [
       picksTitle: { label: "Top picks heading", value: "Bestsellers and Offers" },
       picksBest: { label: "Top picks tab: bestsellers", value: "Bestsellers" },
       picksOffers: { label: "Top picks tab: on offer", value: "On Offer" },
-      picksNew: { label: "Top picks tab: new", value: "New in" },
+      picksNew: { label: "Top picks tab: new", value: "New In" },
       picksAll: { label: "Top picks link", value: "See All" },
       boxesTitle: { label: "Boxes heading", value: "Bhakti Boxes: Puja and Japa Gift Sets", hint: "Optional {count} = number of boxes. Put the words people search for (Bhakti Box, puja, japa, gift) first." },
       boxesLede: { label: "Boxes line", value: "Each box brings a Tulsi japa mala, tilak, itra and Krishna keepsakes for daily bhakti, hand-packed as one gift and delivered across India." },

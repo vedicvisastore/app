@@ -33,7 +33,7 @@ export function HomePicks({ best, offers, fresh, chips }: { best: CardProduct[];
     <section className="home-picks" aria-labelledby="picks" data-tint="gulal">
       <Container>
         {chips.length > 0 && (
-          <ul className="no-scrollbar -mx-[var(--gutter)] mb-8 flex gap-2 overflow-x-auto px-[var(--gutter)]" aria-label="Offers right now">
+          <ul className="no-scrollbar -mx-[var(--gutter)] mb-6 -mt-1.5 flex gap-2 overflow-x-auto px-[var(--gutter)] py-1.5" aria-label="Offers right now">
             {chips.map((chip) => (
               <li key={chip.text} className="vv-sheen shrink-0 rounded-full">
                 <Link
@@ -62,7 +62,7 @@ export function HomePicks({ best, offers, fresh, chips }: { best: CardProduct[];
           </Link>
         </div>
 
-        <div className="no-scrollbar -mx-[var(--gutter)] mt-5 flex gap-2 overflow-x-auto px-[var(--gutter)]" role="tablist" aria-label={c.picksTitle}>
+        <div className="no-scrollbar -mx-[var(--gutter)] mt-3.5 flex gap-2 overflow-x-auto px-[var(--gutter)] py-1.5" role="tablist" aria-label={c.picksTitle}>
           {tabs.map((t) => (
             <button
               key={t.key}
