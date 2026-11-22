@@ -33,7 +33,7 @@ import { getSiteConfig, saveSiteConfig, siteConfigStorage } from "../site-config
 import { transitionOrder } from "../order-transition";
 import { getSettings, saveSettings } from "../settings";
 import { productSalesDetail, productSalesTable } from "../product-analytics";
-import { clearPreviewCookie, encodePreview, previewCookie } from "../content-preview";
+import { clearEditCookie, clearPreviewCookie, editCookie, encodePreview, previewCookie } from "../content-preview";
 import { moveStock, setStock } from "../stock";
 import { ALLOWED_MEDIA, deleteMedia, mediaBucket, presignUpload } from "../storage";
 import { adminProcedure, protectedProcedure, router } from "../trpc";
@@ -297,6 +297,17 @@ export const adminRouter = router({
     return { ok: true };
   }),
   endPreview: protectedProcedure.mutation(({ ctx }) => {
+    ctx.setCookie(clearPreviewCookie());
+    return { ok: true };
+  }),
+  /** Visual editor: store pages tag their text (admins only) until endVisualEdit or two hours pass. */
+  startVisualEdit: protectedProcedure.mutation(({ ctx }) => {
+    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admins only." });
+    ctx.setCookie(editCookie());
+    return { ok: true };
+  }),
+  endVisualEdit: protectedProcedure.mutation(({ ctx }) => {
+    ctx.setCookie(clearEditCookie());
     ctx.setCookie(clearPreviewCookie());
     return { ok: true };
   }),

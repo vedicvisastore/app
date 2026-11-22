@@ -8,6 +8,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { DEFAULT_CONTENT, mergeContent, type SiteContent } from "@/content/defaults";
 import { DEFAULT_CUSTOM, themeCss, themeTokens, THEMES, type CustomTheme } from "@/lib/themes";
 import { cached, clearCache } from "./cache";
+import { tag } from "@/lib/stega";
 import { env } from "./env";
 
 export type SiteConfig = { theme: string; customTheme: CustomTheme; content: Record<string, string>; updatedAt?: string };
@@ -94,10 +95,13 @@ export async function saveSiteConfig(next: SiteConfig) {
 }
 
 /** What every page needs: merged copy and the theme CSS. */
-export async function getSite(): Promise<{ content: SiteContent; themeKey: string; themeCss: string; previewing: boolean }> {
-  const [cfg, draft] = await Promise.all([getSiteConfig().catch(() => EMPTY), import("./content-preview").then((m) => m.requestPreview())]);
+export async function getSite(): Promise<{ content: SiteContent; themeKey: string; themeCss: string; previewing: boolean; editing: boolean }> {
+  const [cfg, { draft, edit }] = await Promise.all([getSiteConfig().catch(() => EMPTY), import("./content-preview").then((m) => m.requestAdminView())]);
   const key = cfg.theme === "custom" || THEMES.some((t) => t.key === cfg.theme) ? cfg.theme : "vrindavan";
   // An admin previewing unsaved text in Admin → Store text sees the draft instead of the saved text.
   const text = draft ?? cfg.content;
-  return { content: text ? mergeContent(text) : DEFAULT_CONTENT, themeKey: key, themeCss: themeCss(themeTokens(key, cfg.customTheme), "html:root"), previewing: !!draft && JSON.stringify(Object.entries(draft).sort()) !== JSON.stringify(Object.entries(cfg.content ?? {}).filter(([, v]) => v.trim()).sort()) };
+  const merged = text ? mergeContent(text) : DEFAULT_CONTENT;
+  // Visual editor: every text carries its key invisibly, so the admin can click it in the store to edit it.
+  const content = edit ? (Object.fromEntries(Object.entries(merged).map(([g, fields]) => [g, Object.fromEntries(Object.entries(fields as Record<string, string>).map(([f, v]) => [f, tag(v, `${g}.${f}`)]))])) as SiteContent) : merged;
+  return { content, themeKey: key, themeCss: themeCss(themeTokens(key, cfg.customTheme), "html:root"), previewing: !!draft && JSON.stringify(Object.entries(draft).sort()) !== JSON.stringify(Object.entries(cfg.content ?? {}).filter(([, v]) => v.trim()).sort()), editing: edit };
 }

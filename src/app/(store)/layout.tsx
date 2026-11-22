@@ -2,7 +2,7 @@ import { CartDrawer } from "@/components/cart/cart-drawer";
 import "./motion.css";
 import { Footer } from "@/components/site/footer";
 import { Header } from "@/components/site/header";
-import { FramedNoScrollbar, PreviewScrollKeeper } from "@/components/site/preview-scroll";
+import { FramedNoScrollbar, PreviewScrollKeeper, VisualEditBridge } from "@/components/site/preview-scroll";
 import { api } from "@/server/caller";
 import { getSite } from "@/server/site-config";
 import { shopLinks } from "@/lib/shop-links";
@@ -34,8 +34,9 @@ export default async function StoreLayout({ children }: { children: React.ReactN
       <Footer settings={settings} categories={categories} sets={sets} copy={site.content.footer} />
       <CartDrawer />
       <FramedNoScrollbar />
-      {site.previewing && <PreviewScrollKeeper />}
-      {site.previewing && (
+      {(site.previewing || site.editing) && <PreviewScrollKeeper />}
+      {site.editing && <VisualEditBridge />}
+      {site.previewing && !site.editing && (
         <p className="pointer-events-none fixed bottom-3 left-1/2 z-[500] -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-xs font-bold text-white shadow-float">Preview: unsaved store text</p>
       )}
     </>

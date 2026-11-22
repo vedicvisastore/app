@@ -7,6 +7,8 @@ import { CONTENT_KEYS } from "@/content/defaults";
 import { env } from "./env";
 
 export const PREVIEW_COOKIE = "vv_text_preview";
+/** Visual editor: store pages tag their text so the admin can click to edit it (see src/lib/stega.ts). */
+export const EDIT_COOKIE = "vv_visual_edit";
 const MAX = 3800; // stay under the 4 KB cookie limit
 
 export function encodePreview(content: Record<string, string>) {
@@ -29,18 +31,25 @@ export function decodePreview(value: string | undefined): Record<string, string>
 const attrs = () => ["Path=/", "HttpOnly", "SameSite=Lax", process.env.COOKIE_DOMAIN ? `Domain=${process.env.COOKIE_DOMAIN}` : "", env.isProd ? "Secure" : ""].filter(Boolean).join("; ");
 export const previewCookie = (value: string) => `${PREVIEW_COOKIE}=${value}; Max-Age=1800; ${attrs()}`;
 export const clearPreviewCookie = () => `${PREVIEW_COOKIE}=; Max-Age=0; ${attrs()}`;
+export const editCookie = () => `${EDIT_COOKIE}=1; Max-Age=7200; ${attrs()}`;
+export const clearEditCookie = () => `${EDIT_COOKIE}=; Max-Age=0; ${attrs()}`;
 
-/** Draft text for this request, only for a signed-in admin. Null otherwise (and outside a request). */
-export async function requestPreview(): Promise<Record<string, string> | null> {
+/**
+ * Draft text and visual-edit mode for this request, only for a signed-in admin. Shoppers have neither cookie,
+ * so for them this costs nothing (no session lookup).
+ */
+export async function requestAdminView(): Promise<{ draft: Record<string, string> | null; edit: boolean }> {
+  const none = { draft: null, edit: false };
   try {
     const { cookies } = await import("next/headers");
     const jar = await cookies();
     const draft = decodePreview(jar.get(PREVIEW_COOKIE)?.value);
-    if (!draft) return null;
+    const edit = jar.get(EDIT_COOKIE)?.value === "1";
+    if (!draft && !edit) return none;
     const [{ db }, { userFromSessionToken, SESSION_COOKIE }] = await Promise.all([import("@/db"), import("./auth")]);
     const user = await userFromSessionToken(db, jar.get(SESSION_COOKIE)?.value);
-    return user?.role === "admin" ? draft : null;
+    return user?.role === "admin" ? { draft, edit } : none;
   } catch {
-    return null;
+    return none;
   }
 }

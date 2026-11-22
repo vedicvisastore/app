@@ -9,9 +9,10 @@ import {
   Smartphone,
   Monitor,
   X,
+  Pencil,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Spinner, PageLoader } from "@/components/ui";
+import { Button, ButtonLink, Spinner, PageLoader } from "@/components/ui";
 import { CONTENT_GROUPS } from "@/content/defaults";
 import { useTRPC } from "@/lib/trpc/client";
 import { cn, storeHref } from "@/lib/utils";
@@ -158,9 +159,12 @@ export default function ContentPage() {
     <div className="pb-24">
       <PageHeader
         title="Store text"
-        description="Every sentence on the store, grouped by where it appears. Type in a box; press Show preview to see it on the store. Nothing changes for shoppers until you save."
+        description="Every sentence on the store, grouped by where it appears. Easiest: open the visual editor and tap any text on the store itself. Nothing changes for shoppers until you save."
         actions={
           <>
+            <ButtonLink href="/admin/content/visual" target="_blank" size="sm">
+              <Pencil className="size-4" aria-hidden /> Open visual editor
+            </ButtonLink>
             <Button
               size="sm"
               variant="outline"

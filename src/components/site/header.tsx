@@ -90,7 +90,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, s
   return (
     <>
       {ribbon.length > 0 && (
-        <div className="marquee-wrap overflow-hidden bg-royal text-white" aria-label="Store announcements">
+        <div className="marquee-wrap overflow-hidden bg-royal text-white" aria-label="Store announcements" data-vv-section="/admin/ribbon" data-vv-label="Edit ribbon">
           <div className="marquee py-2 text-[0.8125rem]" style={{ animationDuration: `${ribbonSeconds}s` }}>
             {[0, 1].map((k) => (
               <div key={k} className="flex shrink-0" aria-hidden={k === 1}>
@@ -188,7 +188,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, s
                   </div>
                   <div>
                     <p className="mb-3 text-xs font-bold tracking-[0.08em] text-ink-mute uppercase">{copy.byCategory}</p>
-                    <ul className={cn("gap-x-6", cats.length > 9 ? "columns-2" : "")}>
+                    <ul className={cn("gap-x-6", cats.length > 9 ? "columns-2" : "")} data-vv-section="/admin/menu" data-vv-label="Edit menu">
                       {cats.map((c) => (
                         <li key={c.slug}>
                           <Link href={`/shop?category=${c.slug}`} className="block py-1 text-[0.95rem] text-ink-soft hover:text-ink">

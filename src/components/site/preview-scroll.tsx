@@ -34,3 +34,13 @@ export function FramedNoScrollbar() {
   return null;
 }
 
+/** Visual editor (admins only): loads the click-to-edit overlay. Never rendered for shoppers. */
+export function VisualEditBridge() {
+  useEffect(() => {
+    // After the page has fully hydrated: the overlay edits text nodes, which must not race React's hydration.
+    const go = () => window.setTimeout(() => void import("./visual-edit-overlay").then((m) => m.start()), 150);
+    if (document.readyState === "complete") go();
+    else window.addEventListener("load", go, { once: true });
+  }, []);
+  return null;
+}

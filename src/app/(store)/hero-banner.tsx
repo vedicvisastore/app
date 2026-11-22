@@ -111,7 +111,8 @@ export function HeroBanner({ slides }: { slides: BannerSlide[] }) {
 
   useEffect(() => {
     if (!looped || held || !onScreen || reduced) return;
-    const t = window.setTimeout(() => goTo(pos + 1), AUTO_MS);
+    // Not while the owner is editing text in the visual editor (the slide would move away mid-edit).
+    const t = window.setTimeout(() => !document.documentElement.classList.contains("vv-editing") && goTo(pos + 1), AUTO_MS);
     return () => window.clearTimeout(t);
   }, [looped, held, onScreen, reduced, pos, goTo]);
 
@@ -122,6 +123,8 @@ export function HeroBanner({ slides }: { slides: BannerSlide[] }) {
       ref={root}
       className="hb"
       data-tint="peacock"
+      data-vv-section="/admin/hero"
+      data-vv-label="Edit banner"
       aria-roledescription="carousel"
       aria-label={c.heroSliderLabel}
       onMouseEnter={() => setHeld(true)}

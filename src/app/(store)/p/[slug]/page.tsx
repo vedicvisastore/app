@@ -50,7 +50,7 @@ export default async function ProductPage({ params }: { params: Params }) {
 
   return (
     <>
-      <Container className="grid gap-10 pt-8 md:grid-cols-2 lg:gap-16">
+      <Container className="grid gap-10 pt-8 md:grid-cols-2 lg:gap-16" data-pid={p.id}>
         <div className="md:col-span-2"><nav aria-label="Breadcrumb" className="text-sm text-ink-mute">
           <ol className="flex flex-wrap items-center gap-1.5">
             <li><Link href="/shop" className="hover:text-royal">Shop</Link></li>
