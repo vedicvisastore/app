@@ -81,7 +81,7 @@ export default async function AccountPage({
           </h2>
           {orders.length === 0 ? (
             <div className="mt-4 rounded-3xl bg-sky p-8 text-center">
-              <p className="font-display text-2xl">No orders yet</p>
+              <p className="font-display text-2xl">No Orders Yet</p>
               <p className="mt-1 text-ink-soft">
                 When you place an order, you can track it here.
               </p>

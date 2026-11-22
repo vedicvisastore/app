@@ -5,7 +5,7 @@ import { Badge, Media, Price, ProductArt } from "../ui";
 import { QuickAdd } from "./quick-add";
 
 function StockNote({ available }: { available: number | null }) {
-  if (available === 0) return <Badge tone="ink">Sold out</Badge>;
+  if (available === 0) return <Badge tone="ink">Sold Out</Badge>;
   if (available != null && available <= 5) return <Badge tone="haldi">Only {available} left</Badge>;
   return null;
 }

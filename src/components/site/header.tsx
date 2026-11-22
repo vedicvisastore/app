@@ -340,11 +340,11 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, s
 
           <div className="mt-6 flex flex-col gap-3 border-t border-line pt-5">
             <Link href={signedIn ? "/account" : "/login"} className="font-bold text-royal">
-              {signedIn ? "Your account and orders" : "Log in"}
+              {signedIn ? "Your Account and Orders" : "Log In"}
             </Link>
             {isAdmin && (
               <Link href="/admin" className="font-bold text-gold-ink">
-                Admin panel
+                Admin Panel
               </Link>
             )}
           </div>

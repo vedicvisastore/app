@@ -98,7 +98,7 @@ export function FreeShippingMeter({
           </span>
         ) : (
           <span>
-            <b>Free shipping</b> unlocked
+            <b>Free Shipping</b> unlocked
           </span>
         )}
       </p>
@@ -330,7 +330,7 @@ export function CartDrawer() {
             <div className="space-y-3 border-t border-line bg-paper px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               {quote && synced && quote.discountTotal > 0 && (
                 <p className="flex justify-between text-sm text-mor">
-                  <span>Offers applied</span>
+                  <span>Offers Applied</span>
                   <span className="tabular-nums">
                     −{inr(quote.discountTotal)}
                   </span>

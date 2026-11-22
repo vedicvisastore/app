@@ -9,7 +9,7 @@ export default async function Shipping() {
   const s = await (await api()).catalog.settings();
   return (
     <Container className="max-w-2xl pt-14">
-      <h1 className="text-[length:var(--text-display-s)]">Shipping and returns</h1>
+      <h1 className="text-[length:var(--text-display-s)]">Shipping and Returns</h1>
       <div className="mt-8 space-y-8 text-ink-soft [&_h2]:font-sans [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-ink">
         <section>
           <h2>Delivery</h2>
@@ -18,7 +18,7 @@ export default async function Shipping() {
           </p>
         </section>
         <section>
-          <h2>Shipping charges</h2>
+          <h2>Shipping Charges</h2>
           <p className="mt-2">
             {s.freeShippingThreshold > 0 ? `Shipping is free on orders of ${inr(s.freeShippingThreshold)} or more. Below that, a flat ${inr(s.shippingFee)} applies.` : "Shipping is free on every order."}
           </p>
@@ -28,7 +28,7 @@ export default async function Shipping() {
           <p className="mt-2">Once your parcel ships, its India Post tracking number appears on your order page in your account.</p>
         </section>
         <section>
-          <h2>Damaged or missing items</h2>
+          <h2>Damaged or Missing Items</h2>
           <p className="mt-2">
             Record a short unboxing video or take photos, and write to {s.supportEmail || "us"} within 48 hours of delivery. We’ll send a replacement for anything damaged or missing. As these are devotional items, we don’t accept returns of opened products otherwise.
           </p>

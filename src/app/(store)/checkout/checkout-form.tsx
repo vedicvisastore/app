@@ -175,7 +175,7 @@ export function CheckoutForm({ email, addresses, mock, adminTest = false }: { em
   if (cart.ready && cart.lines.length === 0 && phase.name === "idle")
     return (
       <Container className="flex flex-col items-center py-28 text-center">
-        <h1 className="text-[length:var(--text-display-s)]">Nothing to check out</h1>
+        <h1 className="text-[length:var(--text-display-s)]">Nothing to Check Out</h1>
         <p className="mt-3 text-ink-soft">Your cart is empty.</p>
         <ButtonLink href="/shop" className="mt-6">
           Browse the shop
@@ -264,7 +264,7 @@ export function CheckoutForm({ email, addresses, mock, adminTest = false }: { em
         </section>
 
         <aside className="h-fit space-y-5 rounded-3xl border border-line p-6 lg:sticky lg:top-28">
-          <h2 className="font-sans text-xl font-bold">Order summary</h2>
+          <h2 className="font-sans text-xl font-bold">Order Summary</h2>
           <ul className="max-h-64 space-y-3 overflow-y-auto">
             {quote?.lines.map((l) => (
               <li key={l.productId} className="flex items-center gap-3">
@@ -290,15 +290,15 @@ export function CheckoutForm({ email, addresses, mock, adminTest = false }: { em
       {phase.name === "paying" && phase.order.mock && mock && (
         <div className="fixed inset-0 z-[400] grid place-items-center bg-ink/40 p-4" role="dialog" aria-modal="true" aria-labelledby="mock-title">
           <div className="w-full max-w-sm rounded-3xl bg-paper p-6 text-center shadow-float">
-            <p className="text-sm font-bold text-gold-ink">{adminTest ? "Admin test order" : "Test mode"}</p>
-            <h2 id="mock-title" className="mt-1 text-3xl">Skip payment</h2>
+            <p className="text-sm font-bold text-gold-ink">{adminTest ? "Admin Test Order" : "Test Mode"}</p>
+            <h2 id="mock-title" className="mt-1 text-3xl">Skip Payment</h2>
             <p className="mt-2 text-sm text-ink-soft">
               {adminTest
                 ? `You’re signed in as an admin, so no money is taken. Order ${phase.order.number} (${inr(phase.order.mock.amount)}) will be marked paid, stock goes out and the confirmation email is sent. Cancel it in Admin → Orders with “put back in stock” when you’re done testing.`
                 : `Razorpay keys aren’t set, so this dev build skips the real payment window. Order ${phase.order.number}, ${inr(phase.order.mock.amount)}.`}
             </p>
             <div className="mt-6 grid gap-2">
-              <Button onClick={() => confirmPayment(phase.order.number, { mock: true })}>Mark as paid</Button>
+              <Button onClick={() => confirmPayment(phase.order.number, { mock: true })}>Mark as Paid</Button>
               <Button variant="ghost" onClick={() => dispatch({ type: "DISMISSED" })}>
                 Cancel
               </Button>

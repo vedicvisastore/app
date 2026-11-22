@@ -70,7 +70,7 @@ function LoginForm() {
   return (
     <div className="w-full">
       <h1 className="text-4xl sm:text-5xl">
-        {step === "email" ? copy.title : "Check your email"}
+        {step === "email" ? copy.title : "Check Your Email"}
       </h1>
       <p className="mt-3 text-ink-soft">
         {step === "email" ? (

@@ -36,21 +36,25 @@ const SYNONYMS: Record<string, string[]> = {
 
 const tokens = (s: string) => normalise(s).split(" ").filter((t) => t && !STOP.has(t));
 
-/** Edit distance with an early exit once it exceeds `max`. */
+/**
+ * Edit distance where swapping two neighbouring letters counts as one typo ("bhatki" → "bhakti"),
+ * with an early exit once it exceeds `max`.
+ */
 function distance(a: string, b: string, max: number) {
   if (Math.abs(a.length - b.length) > max) return max + 1;
-  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
   for (let i = 1; i <= a.length; i++) {
-    const cur = [i];
-    let best = i;
+    let best = Infinity;
     for (let j = 1; j <= b.length; j++) {
-      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-      best = Math.min(best, cur[j]);
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+      best = Math.min(best, d[i][j]);
     }
     if (best > max) return max + 1;
-    prev = cur;
   }
-  return prev[b.length];
+  return d[a.length][b.length];
 }
 
 /** How well one typed word matches one word of the product (0 = not at all). */

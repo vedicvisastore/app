@@ -46,7 +46,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Link href="/account" className="text-sm font-bold text-ink-soft hover:text-royal">Your orders</Link>
+          <Link href="/account" className="text-sm font-bold text-ink-soft hover:text-royal">Your Orders</Link>
           <h2 className="mt-1 text-4xl">Order {o.number}</h2>
           <p className="text-sm text-ink-soft">Placed {formatDate(o.createdAt, true)}</p>
         </div>
@@ -115,7 +115,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
         </div>
         <aside className="space-y-6">
           <div className="rounded-2xl border border-line p-5 text-sm">
-            <h3 className="font-sans font-bold">Delivering to</h3>
+            <h3 className="font-sans font-bold">Delivering To</h3>
             <p className="mt-2">{a.name}</p>
             <p className="text-ink-soft">
               {a.line1}

@@ -46,9 +46,9 @@ export function Footer({ settings, categories = [], sets = [], copy }: { setting
             <li><Link className={linkCls} href="/shop">Everything</Link></li>
           </Column>
           <Column title={copy.help}>
-            <li><Link className={linkCls} href="/track">Track an order</Link></li>
-            <li><Link className={linkCls} href="/shipping">Shipping and returns</Link></li>
-            <li><Link className={linkCls} href="/about">Our story</Link></li>
+            <li><Link className={linkCls} href="/track">Track an Order</Link></li>
+            <li><Link className={linkCls} href="/shipping">Shipping and Returns</Link></li>
+            <li><Link className={linkCls} href="/about">Our Story</Link></li>
           </Column>
           <Column title={copy.follow}>
             {ig && (

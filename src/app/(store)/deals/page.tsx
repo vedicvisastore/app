@@ -50,7 +50,7 @@ export default async function DealsPage() {
 
         {products.length > 0 ? (
           <section>
-            <SectionTitle aside={<p className="text-sm text-ink-soft">{products.length} on offer</p>}>On sale</SectionTitle>
+            <SectionTitle aside={<p className="text-sm text-ink-soft">{products.length} on offer</p>}>On Sale</SectionTitle>
             <ProductGrid>
               {products.map((p, i) => (
                 <ProductCard key={p.id} p={p} priority={i < 4} />

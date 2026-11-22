@@ -35,7 +35,7 @@ export default function CartPage() {
 
   return (
     <Container className="pt-10">
-      <h1 className="text-[length:var(--text-display-s)]">Your cart</h1>
+      <h1 className="text-[length:var(--text-display-s)]">Your Cart</h1>
       <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_380px]">
         <div>
           {quote && (
