@@ -1,6 +1,6 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, ImageUp, Monitor, MousePointerClick, Pencil, RotateCcw, Smartphone, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, ImageUp, Monitor, MousePointerClick, Pencil, RotateCcw, Search, Smartphone, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, PageLoader, Spinner } from "@/components/ui";
@@ -83,6 +83,14 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
   const [mode, setMode] = useState<"edit" | "browse">("edit");
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // "Find any text": every line, including ones that only show sometimes (sold out, empty cart, login steps).
+  const [finding, setFinding] = useState(false);
+  const [q, setQ] = useState("");
+  const found = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    if (!t) return [];
+    return FIELDS.filter((f) => `${f.label} ${f.groupLabel} ${f.value} ${edits[f.key] ?? ""}`.toLowerCase().includes(t)).slice(0, 40);
+  }, [q, edits]);
   const current = useMemo(() => clean(edits), [edits]);
   const draftJson = JSON.stringify(current);
   // Pictures: what is saved, and what the owner has picked since.
@@ -258,6 +266,9 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
             </button>
           ))}
         </div>
+        <button type="button" onClick={() => { setSelected(null); setFinding(true); }} className="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-sky lg:hidden" aria-label="Find any text">
+          <Search className="size-4" aria-hidden />
+        </button>
         <a href={storeHref(shownPath)} target="_blank" rel="noreferrer" className="hidden h-9 items-center gap-1 rounded-full px-2 text-sm text-ink-soft hover:text-royal sm:inline-flex">
           <ExternalLink className="size-4" aria-hidden /> Open
         </a>
@@ -284,7 +295,7 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
             "z-10 flex flex-col border-line bg-paper",
             "max-lg:absolute max-lg:inset-x-0 max-lg:bottom-0 max-lg:max-h-[60%] max-lg:rounded-t-3xl max-lg:border-t max-lg:shadow-float max-lg:pb-[env(safe-area-inset-bottom,0px)]",
             "lg:w-[380px] lg:shrink-0 lg:border-l",
-            !field && !slotKey && "max-lg:hidden",
+            !field && !slotKey && !finding && "max-lg:hidden",
           )}
         >
           {slotKey ? (
@@ -352,7 +363,33 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
               </Button>
             </div>
           ) : (
-            <div className="hidden flex-1 overflow-y-auto p-4 lg:block">
+            <div className={cn("flex-1 overflow-y-auto p-4", !finding && "hidden lg:block")}>
+              <div className="mb-5 flex items-center gap-2">
+                <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full border border-line bg-paper-2 px-4 focus-within:border-royal">
+                  <Search className="size-4 shrink-0 text-ink-mute" aria-hidden />
+                  <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find any text" className="h-full min-w-0 flex-1 bg-transparent text-base outline-none" aria-label="Find any text" />
+                </label>
+                {finding && (
+                  <button type="button" onClick={() => setFinding(false)} className="grid size-10 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-sky lg:hidden" aria-label="Close">
+                    <X className="size-4" />
+                  </button>
+                )}
+              </div>
+              {q.trim() ? (
+                <ul className="space-y-1">
+                  {found.map((f) => (
+                    <li key={f.key}>
+                      <button type="button" onClick={() => setSelected(f.key)} className="w-full rounded-lg px-2 py-1.5 text-left text-sm hover:bg-sky">
+                        <span className="block text-xs text-ink-mute">{f.groupLabel}</span>
+                        <span className="block font-bold">{f.label}</span>
+                        <span className="block truncate text-ink-soft">{edits[f.key] ?? f.value}</span>
+                      </button>
+                    </li>
+                  ))}
+                  {found.length === 0 && <li className="text-sm text-ink-mute">No text matches.</li>}
+                </ul>
+              ) : (
+              <>
               <p className="font-bold">How it works</p>
               <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm text-ink-soft">
                 <li>Every text you can change has a dotted outline. Tap it to edit it here.</li>
@@ -387,6 +424,8 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
                 ))}
                 {changedCount === 0 && <li className="text-sm text-ink-mute">Nothing changed yet.</li>}
               </ul>
+              </>
+              )}
             </div>
           )}
         </aside>
