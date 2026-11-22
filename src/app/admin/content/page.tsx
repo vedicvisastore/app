@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Spinner } from "@/components/ui";
+import { Button, Spinner, PageLoader } from "@/components/ui";
 import { CONTENT_GROUPS } from "@/content/defaults";
 import { useTRPC } from "@/lib/trpc/client";
 import { cn, storeHref } from "@/lib/utils";
@@ -74,9 +74,6 @@ export default function ContentPage() {
   const draftJson = JSON.stringify(current);
   const lastSent = useRef<string | null>(null);
   useEffect(() => {
-    if (window.matchMedia("(min-width: 1280px)").matches) setPreview(true);
-  }, []);
-  useEffect(() => {
     if (!showing || !data || lastSent.current === draftJson) return;
     const t = setTimeout(() => {
       pushPreview.mutate(
@@ -127,13 +124,41 @@ export default function ContentPage() {
   const pagePath = WHERE[search ? (visible[0]?.group ?? group) : group] ?? "/";
   const side = !preview; // section list as a sidebar only when the preview isn't taking the space
 
-  if (isLoading || !data) return <Spinner className="text-ink-mute" />;
+  if (isLoading || !data) return <PageLoader />;
+
+  const saveRow = (
+    <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+      <p className="text-sm text-ink-soft">
+        {unsaved
+          ? `${unsaved} unsaved ${unsaved === 1 ? "change" : "changes"}`
+          : "All changes saved"}
+      </p>
+      <div className="flex gap-2">
+        {unsaved > 0 && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setEdits(data.content ?? {})}
+          >
+            Discard
+          </Button>
+        )}
+        <Button
+          size="sm"
+          disabled={!unsaved || save.isPending}
+          onClick={() => save.mutate({ content: current })}
+        >
+          {save.isPending ? <Spinner /> : "Save changes"}
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="pb-24">
       <PageHeader
         title="Store text"
-        description="Every sentence on the store, grouped by where it appears. Type in a box and the preview updates as you go. Nothing changes for shoppers until you save."
+        description="Every sentence on the store, grouped by where it appears. Type in a box; press Show preview to see it on the store. Nothing changes for shoppers until you save."
         actions={
           <>
             <Button
@@ -336,6 +361,11 @@ export default function ContentPage() {
               )}
             </Card>
           </div>
+          {preview && (
+            <div className="sticky bottom-0 z-30 -mx-1 hidden border-t border-line bg-paper/95 px-1 pt-3 pb-3 backdrop-blur xl:block">
+              {saveRow}
+            </div>
+          )}
         </div>
 
         {preview && (
@@ -380,32 +410,8 @@ export default function ContentPage() {
         </div>
       )}
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] backdrop-blur lg:left-[248px]">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
-          <p className="text-sm text-ink-soft">
-            {unsaved
-              ? `${unsaved} unsaved ${unsaved === 1 ? "change" : "changes"}`
-              : "All changes saved"}
-          </p>
-          <div className="flex gap-2">
-            {unsaved > 0 && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setEdits(data.content ?? {})}
-              >
-                Discard
-              </Button>
-            )}
-            <Button
-              size="sm"
-              disabled={!unsaved || save.isPending}
-              onClick={() => save.mutate({ content: current })}
-            >
-              {save.isPending ? <Spinner /> : "Save changes"}
-            </Button>
-          </div>
-        </div>
+      <div className={cn("fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] backdrop-blur lg:left-[248px]", preview && "xl:hidden")}>
+        {saveRow}
       </div>
     </div>
   );

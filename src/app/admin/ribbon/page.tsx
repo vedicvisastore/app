@@ -2,7 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Link2, Plus, X } from "lucide-react";
 import { useState } from "react";
-import { Button, Spinner } from "@/components/ui";
+import { Button, Spinner , PageLoader } from "@/components/ui";
 import type { RibbonItem } from "@/lib/settings-defaults";
 import { useTRPC } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ const IDEAS = ["Free shipping on orders above ₹999", "New: Tulsi japa mala", "
 export default function RibbonPage() {
   const trpc = useTRPC();
   const { data } = useQuery(trpc.admin.settings.queryOptions());
-  if (!data) return <Spinner className="text-ink-mute" />;
+  if (!data) return <PageLoader />;
   return <Editor initialItems={data.ribbon} initialSeconds={data.ribbonSeconds} />;
 }
 

@@ -3,9 +3,9 @@ import Image from "next/image";
 import "./home.css";
 import Link from "next/link";
 import { BoxCard, ProductCard } from "@/components/product/cards";
-import { ButtonLink, Container } from "@/components/ui";
+import { ButtonLink, Container, Media, ProductArt } from "@/components/ui";
 import { socialHandle, socialUrl } from "@/lib/settings-defaults";
-import { inr, launchLabel } from "@/lib/utils";
+import { cn, inr, launchLabel } from "@/lib/utils";
 import { api } from "@/server/caller";
 import { fmt } from "@/content/defaults";
 import { getSite } from "@/server/site-config";
@@ -13,12 +13,13 @@ import { InstagramBadge, YoutubeBadge } from "@/components/site/social";
 import { SetSwitcher } from "./set-switcher";
 import { HeroBanner, type BannerProduct, type BannerSlide } from "./hero-banner";
 import { HomePicks } from "./home-picks";
+import { automaticHeroSlides, HERO_PRODUCTS, HERO_SCENE } from "@/lib/hero-slides";
 
 const ESSENTIAL_ORDER = ["jap-mala", "kanthi-mala", "japa-bags", "tilak-chandan", "itra-fragrance", "japa-accessories", "books"];
 
 export default async function Home() {
   const trpc = await api();
-  const [all, settings, { content }, deals] = await Promise.all([trpc.catalog.list({}), trpc.catalog.settings(), getSite(), trpc.catalog.deals()]);
+  const [all, settings, { content }, deals, categories] = await Promise.all([trpc.catalog.list({}), trpc.catalog.settings(), getSite(), trpc.catalog.deals(), trpc.catalog.categories()]);
   const c = content.home;
   const boxes = all.filter((p) => p.bundleGroup === "Bhakti Boxes");
   const japa = all.filter((p) => p.bundleGroup === "Japa Sets");
@@ -30,7 +31,6 @@ export default async function Home() {
     return i < 0 ? 99 : i;
   };
   const essentials = [...singles].sort((a, b) => Number(b.trending) - Number(a.trending) || b.score - a.score || Number(b.pinned) - Number(a.pinned) || rank(a.categorySlug) - rank(b.categorySlug)).slice(0, 8);
-  const heroBox = boxes.find((b) => b.image) ?? boxes[0];
 
   // First glance under the hero: bestsellers, offers and new arrivals (boxes and items together).
   const buyable = all.filter((p) => !p.upcoming && p.available !== 0);
@@ -49,18 +49,39 @@ export default async function Home() {
     ...(bestPct > 0 ? [{ kind: "sale" as const, text: `Up to ${bestPct}% off, ${onOffer.length} on offer` }] : []),
     ...(settings.freeShippingThreshold > 0 ? [{ kind: "shipping" as const, text: `Free shipping above ${inr(settings.freeShippingThreshold)}` }] : []),
   ];
-  // Banner: brand → signature box → japa trio → shringar trio (trios need three products; bestsellers fill a gap).
+  // Banner: the admin's slides (Admin → Home banner), or automatic ones when none are set up.
   const bp = (p: (typeof all)[number]): BannerProduct => ({ id: p.id, name: p.name, slug: p.slug, image: p.image, price: p.price, mrp: p.mrp, soldOut: p.available === 0, launch: p.upcoming ? launchLabel(p.launchAt) : null });
-  const photoFirst = (list: typeof all) => [...list].sort((a, b) => Number(!!b.image) - Number(!!a.image) || Number(b.pinned) - Number(a.pinned) || b.score - a.score);
-  const signature = boxes.find((b) => b.featured && b.image) ?? heroBox;
-  const trio = (list: typeof all) => photoFirst(list).slice(0, 3);
-  const bannerSlides: BannerSlide[] = [
-    { key: "brand", kind: "brand", scene: "/brand/hero-banner.webp", title: c.heroEverydayTitle, lede: c.heroEverydayLede, href: "/shop", action: c.heroEverydayAction, secondary: { href: "/about", label: c.storyTile }, products: [] },
-    ...(signature ? [{ key: "box", kind: "feature" as const, scene: "/brand/hero-banner-single.webp", label: content.nav.boxes, title: c.heroTitle, lede: c.heroLede, href: "/shop?group=bhakti-boxes", action: c.heroPrimary, products: [bp(signature)] }] : []),
-    ...(japa.length >= 3 ? [{ key: "japa", kind: "trio" as const, scene: "/brand/hero-banner-trio.webp", label: c.setsJapaTab, title: c.heroJapaTitle, href: "/shop?group=japa-sets", action: c.japaTileLink, products: trio(japa).map(bp) }] : []),
-    ...(shringar.length >= 3 ? [{ key: "shringar", kind: "trio" as const, scene: "/brand/hero-banner-trio.webp", label: c.setsShringarTab, title: c.heroShringarTitle, href: "/shop?group=shringar-kits", action: c.heroShringarAction, products: trio(shringar).map(bp) }] : []),
-    ...(japa.length < 3 || shringar.length < 3 ? [{ key: "best", kind: "trio" as const, scene: "/brand/hero-banner-trio.webp", label: c.picksBest, title: c.heroEverydayTitle, href: "/shop", action: c.heroSecondary, products: trio(buyable).map(bp) }].filter((s) => s.products.length === 3) : []),
-  ];
+  const byId = new Map(all.map((p) => [p.id, p]));
+  const slideSetup = settings.heroSlides.length ? settings.heroSlides.filter((s) => !s.hidden) : automaticHeroSlides(all, c, content.nav.boxes);
+  const bannerSlides: BannerSlide[] = slideSetup.flatMap((s) => {
+    // Products hidden or deleted since the slide was set up drop out; a slide that can't be filled is skipped.
+    const products = s.productIds.map((id) => byId.get(id)).filter((p) => !!p).map(bp);
+    if (products.length < HERO_PRODUCTS[s.kind]) return [];
+    return [{
+      key: s.id,
+      kind: s.kind,
+      scene: HERO_SCENE[s.kind],
+      label: s.label || undefined,
+      title: s.title,
+      lede: s.lede || undefined,
+      href: s.href,
+      action: s.action,
+      secondary: s.secondaryLabel && s.secondaryHref ? { href: s.secondaryHref, label: s.secondaryLabel } : undefined,
+      products: products.slice(0, HERO_PRODUCTS[s.kind]),
+    }];
+  });
+
+  // Shop by category: single-item categories, each shown with a product photo from it.
+  const catTiles = categories
+    .filter((cat) => cat.slug !== "bhakti-boxes-kits")
+    .map((cat) => {
+      const inCat = singles.filter((p) => p.categorySlug === cat.slug);
+      const pic = inCat.find((p) => p.image);
+      return { slug: cat.slug, name: cat.name, count: inCat.length, image: pic?.image ?? null, seed: inCat[0]?.id ?? cat.id };
+    })
+    .filter((t) => t.count > 0)
+    .sort((a, b) => Number(!!b.image) - Number(!!a.image) || rank(a.slug) - rank(b.slug))
+    .slice(0, 8);
 
   return (
     <div className="home-page">
@@ -69,23 +90,68 @@ export default async function Home() {
 
       <HomePicks best={best} offers={onOffer} fresh={fresh} chips={offerChips} />
 
+      {/* Shop by category: single items, so the store isn't only boxes and sets */}
+      {catTiles.length > 1 && (
+        <section className="home-cats" aria-labelledby="cats" data-tint="mor">
+          <Container>
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <h2 id="cats">{c.categoriesTitle}</h2>
+              <Link href="/shop?group=items" className="text-ink underline decoration-gold decoration-2 underline-offset-[6px] hover:text-royal">
+                {content.nav.items}
+              </Link>
+            </div>
+            <ul style={{ ["--cats" as string]: catTiles.length }} className="no-scrollbar -mx-[var(--gutter)] mt-10 flex snap-x gap-4 overflow-x-auto scroll-px-[var(--gutter)] px-[var(--gutter)] pb-2 md:mx-0 md:grid md:grid-cols-4 md:gap-5 md:overflow-visible md:px-0 lg:grid-cols-[repeat(var(--cats),minmax(0,1fr))]">
+              {catTiles.map((t) => (
+                <li key={t.slug} className="w-[36%] shrink-0 snap-start sm:w-[26%] md:w-auto">
+                  <Link href={`/shop?category=${t.slug}`} className="home-cat group block">
+                    <span className="home-cat-media">
+                      {t.image ? <Media src={t.image} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /> : <ProductArt name={t.name} seed={t.seed} />}
+                    </span>
+                    <span className="mt-3 block font-bold text-ink">{t.name}</span>
+                    <span className="text-sm text-ink-soft">{t.count} {t.count === 1 ? "item" : "items"}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Container>
+        </section>
+      )}
+
       {boxes.length > 0 && <OrnamentDivider kind="lotus" className="home-collection-ornament" />}
 
-      {/* The boxes */}
+      {/* The boxes: with one or two, the heading sits beside them instead of above a mostly empty row */}
       {boxes.length > 0 && (
         <section className="home-boxes" aria-labelledby="boxes" data-tint="gold">
-          <Container>
-            <div className="home-section-heading grid items-end gap-6 lg:grid-cols-12">
-              <h2 id="boxes" className="lg:col-span-7">
+          <Container className={cn(boxes.length <= 2 && "lg:grid lg:grid-cols-12 lg:items-center lg:gap-[var(--gap-columns)]")}>
+            <div className={cn("home-section-heading grid items-end gap-6", boxes.length <= 2 ? "lg:col-span-5 lg:block" : "lg:grid-cols-12")}>
+              <h2 id="boxes" className={cn(boxes.length > 2 && "lg:col-span-7")}>
                 {fmt(c.boxesTitle, { count: boxes.length })}
               </h2>
-              <p className="text-ink-soft lg:col-span-4 lg:col-start-9">{c.boxesLede}</p>
+              <p className={cn("text-ink-soft", boxes.length <= 2 ? "lg:mt-6" : "lg:col-span-4 lg:col-start-9")}>{c.boxesLede}</p>
             </div>
-            <div className="home-box-rail no-scrollbar -mx-[var(--gutter)] mt-16 flex snap-x gap-8 overflow-x-auto px-[var(--gutter)] pt-4 pb-2 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">
+            <div className={cn("home-box-rail no-scrollbar -mx-[var(--gutter)] mt-16 flex snap-x gap-8 overflow-x-auto scroll-px-[var(--gutter)] px-[var(--gutter)] pt-4 pb-2 lg:mx-0 lg:grid lg:overflow-visible lg:px-0", boxes.length <= 2 ? "lg:col-span-7 lg:mt-0 lg:grid-cols-2" : boxes.length === 3 ? "lg:grid-cols-3" : boxes.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-5")}>
               {boxes.map((b, i) => (
                 <div key={b.id} className="w-[70%] shrink-0 snap-start sm:w-[42%] lg:w-auto">
                   <BoxCard p={b} priority={i < 2} />
                 </div>
+              ))}
+            </div>
+          </Container>
+        </section>
+      )}
+
+      {essentials.length > 0 && (
+        <section className="home-essentials" aria-labelledby="essentials" data-tint="mor">
+          <Container>
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <h2 id="essentials">{anyTrending ? c.essentialsTrendingTitle : c.essentialsTitle}</h2>
+              <Link href="/shop" className="text-ink underline decoration-gold decoration-2 underline-offset-[6px] hover:text-royal">
+                {fmt(c.essentialsLink, { count: singles.length })}
+              </Link>
+            </div>
+            <div className="home-essentials-grid mt-16 grid grid-cols-2 gap-x-[var(--gap-columns)] gap-y-14 md:grid-cols-3 lg:grid-cols-4">
+              {essentials.map((p) => (
+                <ProductCard key={p.id} p={p} />
               ))}
             </div>
           </Container>
@@ -115,23 +181,6 @@ export default async function Home() {
       </section>
 
       {/* Daily essentials */}
-      {essentials.length > 0 && (
-        <section className="home-essentials" aria-labelledby="essentials" data-tint="mor">
-          <Container>
-            <div className="flex flex-wrap items-end justify-between gap-6">
-              <h2 id="essentials">{anyTrending ? c.essentialsTrendingTitle : c.essentialsTitle}</h2>
-              <Link href="/shop" className="text-ink underline decoration-gold decoration-2 underline-offset-[6px] hover:text-royal">
-                {fmt(c.essentialsLink, { count: singles.length })}
-              </Link>
-            </div>
-            <div className="home-essentials-grid mt-16 grid grid-cols-2 gap-x-[var(--gap-columns)] gap-y-14 md:grid-cols-3 lg:grid-cols-4">
-              {essentials.map((p) => (
-                <ProductCard key={p.id} p={p} />
-              ))}
-            </div>
-          </Container>
-        </section>
-      )}
 
 
       {/* Follow along: the brand's own channels */}

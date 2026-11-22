@@ -18,7 +18,7 @@ export function SortSelect({ value }: { value: string }) {
             else next.set("sort", e.target.value);
             router.push(`${pathname}?${next.toString()}`, { scroll: false });
           }}
-          className="h-10 cursor-pointer appearance-none rounded-full border border-line-strong bg-paper pr-10 pl-4 text-sm text-ink transition-colors hover:border-ink focus-visible:border-royal"
+          className="h-10 cursor-pointer appearance-none rounded-full border border-line-strong bg-paper pr-10 pl-4 text-base text-ink sm:text-sm transition-colors hover:border-ink focus-visible:border-royal"
         >
           <option value="trending">Popular</option>
           <option value="new">Newest</option>

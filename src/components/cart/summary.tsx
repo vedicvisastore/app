@@ -51,7 +51,7 @@ export function CouponField({ quote }: { quote: Quote | undefined }) {
 }
 
 export function Totals({ quote, loading }: { quote: Quote | undefined; loading?: boolean }) {
-  if (!quote) return <div className="flex justify-center py-6"><Spinner className="text-ink-mute" /></div>;
+  if (!quote) return <div className="flex justify-center py-6"><Spinner className="text-gulal" /></div>;
   const mrpSaving = quote.mrpTotal - quote.subtotal;
   return (
     <dl className="space-y-2.5 text-[0.95rem]">
@@ -78,7 +78,7 @@ export function Totals({ quote, loading }: { quote: Quote | undefined; loading?:
       <div className="flex items-baseline justify-between border-t border-line pt-3">
         <dt className="font-bold">Total</dt>
         <dd className="flex items-center gap-2 text-2xl font-bold tabular-nums">
-          {loading && <Spinner className="text-ink-mute" />}
+          {loading && <Spinner className="text-gulal" />}
           {inr(quote.total)}
         </dd>
       </div>

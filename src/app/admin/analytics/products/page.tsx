@@ -4,7 +4,7 @@ import { ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Spinner } from "@/components/ui";
+import { Spinner , PageLoader } from "@/components/ui";
 import { useTRPC } from "@/lib/trpc/client";
 import { cn, inr } from "@/lib/utils";
 import { Card, PageHeader, Stat, Tabs } from "../../_ui";
@@ -55,7 +55,7 @@ export default function ProductAnalyticsPage() {
         <Tabs value={range} onChange={(v) => router.replace(`?days=${v}`)} items={RANGES} />
       </div>
 
-      {isLoading && <Spinner className="text-ink-mute" />}
+      {isLoading && <PageLoader />}
       {data && (
         <>
           <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">

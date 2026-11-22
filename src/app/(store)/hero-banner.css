@@ -184,6 +184,8 @@
 .hb-dots button { display: grid; place-items: center; height: 24px; padding-inline: 6px; }
 .hb-dots button::before { content: ""; width: 8px; height: 8px; border-radius: 999px; background: color-mix(in oklab, var(--color-shyam) 30%, transparent); transition: width 0.3s ease, background-color 0.3s ease; }
 .hb-dots button[aria-current]::before { width: 26px; background: var(--color-royal); }
+/* Touch screens: a bigger hit area around each dot, same look. */
+@media (pointer: coarse) { .hb-dots { padding-block: 0; } .hb-dots button { height: 36px; padding-inline: 9px; } }
 
 @media (prefers-reduced-motion: reduce) {
   .hb-scene, .hb-rise { transition: none; }

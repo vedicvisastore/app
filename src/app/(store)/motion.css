@@ -62,19 +62,13 @@
   100% { transform: translate(-20px, 110vh) rotate(420deg); opacity: 0.2; }
 }
 
-/* Sticky header: only the menu row takes a soft pastel of the section passing under it (header.tsx reads data-tint). Theme tokens, so every theme works. */
-.vv-header, .vv-header > nav { transition: background-color 0.6s ease, border-color 0.6s ease; }
-.vv-header[data-tint="royal"] > nav { background-color: color-mix(in oklab, var(--color-royal) 17%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-royal) 32%, var(--color-paper)); }
-.vv-header[data-tint="gulal"] > nav { background-color: color-mix(in oklab, var(--color-gulal) 17%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-gulal) 32%, var(--color-paper)); }
-.vv-header[data-tint="gold"] > nav { background-color: color-mix(in oklab, var(--color-gold) 28%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-gold) 45%, var(--color-paper)); }
-.vv-header[data-tint="peacock"] > nav { background-color: color-mix(in oklab, var(--color-peacock) 19%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-peacock) 34%, var(--color-paper)); }
-.vv-header[data-tint="mor"] > nav { background-color: color-mix(in oklab, var(--color-mor) 19%, var(--color-paper)); border-color: color-mix(in oklab, var(--color-mor) 34%, var(--color-paper)); }
-.vv-header[data-tint="royal"] { border-bottom-color: color-mix(in oklab, var(--color-royal) 32%, var(--color-paper)); }
-.vv-header[data-tint="gulal"] { border-bottom-color: color-mix(in oklab, var(--color-gulal) 32%, var(--color-paper)); }
-.vv-header[data-tint="gold"] { border-bottom-color: color-mix(in oklab, var(--color-gold) 45%, var(--color-paper)); }
-.vv-header[data-tint="peacock"] { border-bottom-color: color-mix(in oklab, var(--color-peacock) 34%, var(--color-paper)); }
-.vv-header[data-tint="mor"] { border-bottom-color: color-mix(in oklab, var(--color-mor) 34%, var(--color-paper)); }
-@media (prefers-reduced-motion: reduce) { .vv-header, .vv-header > nav { transition: none; } }
+/* Desktop menu row: one fixed deep Shyam bar (no colour changes on scroll), edged with the logo's peacock, gold and gulal. */
+.vv-menu { position: relative; }
+.vv-menu::after { content: ""; position: absolute; inset: auto 0 0; height: 3px; background: linear-gradient(90deg, var(--color-peacock), var(--color-royal) 30%, var(--color-gold) 55%, var(--color-gulal) 80%, var(--color-peacock)); }
+.vv-menu-item { position: relative; }
+.vv-menu-item::after { content: ""; position: absolute; left: 0; right: 0; bottom: 6px; height: 2px; border-radius: 2px; background: var(--color-gold); transform: scaleX(0); transition: transform 0.25s cubic-bezier(.2,.8,.2,1); }
+.vv-menu-item:hover::after, .vv-menu-item[aria-current="page"]::after, .vv-menu-item[aria-expanded="true"]::after { transform: scaleX(1); }
+@media (prefers-reduced-motion: reduce) { .vv-menu-item::after { transition: none; } }
 
 /*
  * Hover: main items light up and grow a touch (owner request). Menu items, footer links, pills/chips/tabs,
@@ -87,7 +81,8 @@
   .vv-header a.rounded-full, .vv-header button.rounded-full {
     transition: transform 0.2s cubic-bezier(.2,.8,.2,1), color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
   }
-  .vv-header nav a:hover, .vv-header nav button:hover { transform: scale(1.07); color: var(--color-ink); }
+  .vv-header nav a:hover, .vv-header nav button:hover { transform: scale(1.07); }
+  .vv-header nav .shadow-float a:hover { color: var(--color-ink); }
   .vv-header nav .shadow-float a { transform-origin: left center; }
   /* "Bolder" on hover without changing text width (a real font-weight change would shift the menu). */
   .vv-header nav a:hover, .vv-header nav button:hover, footer a:hover,

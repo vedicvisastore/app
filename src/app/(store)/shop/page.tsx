@@ -5,16 +5,13 @@ import { ButtonLink, Container } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { api } from "@/server/caller";
 import { getSite } from "@/server/site-config";
+import { shopLinks } from "@/lib/shop-links";
 import { SortSelect } from "./sort-select";
-import { PeacockFeather, Rangoli, Toran } from "@/components/site/ornaments";
+import { Rangoli, Toran } from "@/components/site/ornaments";
+import Image from "next/image";
 
 export const metadata: Metadata = { title: "Shop" };
 
-const GROUPS = [
-  { slug: "bhakti-boxes", label: "Bhakti Boxes", blurb: "Complete daily-practice boxes, hand-packed and ready to gift." },
-  { slug: "japa-sets", label: "Japa Sets", blurb: "Mala, bag and counter: everything to chant your rounds." },
-  { slug: "shringar-kits", label: "Shringar Kits", blurb: "Tilak, kanthi mala and fragrance for every day." },
-];
 
 type SP = Promise<{ category?: string; group?: string; q?: string; sort?: string; stock?: string }>;
 
@@ -22,13 +19,15 @@ export default async function Shop({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const sort = (["trending", "price-asc", "price-desc", "new"] as const).find((s) => s === sp.sort) ?? "trending";
   const trpc = await api();
-  const [list, categories, { content }] = await Promise.all([
+  const [list, categories, { content }, live] = await Promise.all([
     trpc.catalog.list({ category: sp.category, group: sp.group, q: sp.q?.slice(0, 80), sort, inStock: sp.stock === "1" }),
     trpc.catalog.categories(),
     getSite(),
+    trpc.catalog.groups(),
   ]);
+  const GROUPS = shopLinks(live.groups, live.items, content.nav);
   const c = content.shop;
-  const blurbs: Record<string, string> = { "bhakti-boxes": c.boxesBlurb, "japa-sets": c.japaBlurb, "shringar-kits": c.shringarBlurb };
+  const blurbs: Record<string, string> = { "bhakti-boxes": c.boxesBlurb, "japa-sets": c.japaBlurb, "shringar-kits": c.shringarBlurb, items: c.itemsBlurb };
   const group = GROUPS.find((g) => g.slug === sp.group);
   const category = categories.find((c) => c.slug === sp.category);
   const title = sp.q ? `Results for “${sp.q}”` : group?.label ?? category?.name ?? c.allTitle;
@@ -96,8 +95,9 @@ export default async function Shop({ searchParams }: { searchParams: SP }) {
         </div>
 
         {list.length === 0 ? (
-          <div className="flex flex-col items-center py-24 text-center">
-            <PeacockFeather className="mb-5 h-28 w-auto" />
+          <div className="flex flex-col items-center py-16 text-center sm:py-20">
+            {/* Little makhan-pot monkey (owner's artwork, background cut out) */}
+            <Image src="/brand/makhan-monkey.webp" alt="" width={520} height={789} className="vv-rise mb-6 h-auto w-36 sm:w-44" />
             <p className="font-display text-3xl">{c.emptyTitle}</p>
             <p className="mt-2 max-w-sm text-ink-soft">{c.emptyBody}</p>
             <ButtonLink href="/shop" className="mt-6">

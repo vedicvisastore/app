@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { use, useMemo, useRef, useState } from "react";
-import { Button, Spinner } from "@/components/ui";
+import { Button, Spinner , PageLoader } from "@/components/ui";
 import type { FestivalAccent } from "@/db/schema";
 import { ACCENT_BAND, ACCENT_LABEL, festivalDay } from "@/lib/festival-accent";
 import { FESTIVAL_STATE_LABEL, festivalState } from "@/lib/festival-status";
@@ -75,7 +75,7 @@ export default function FestivalEditorPage({
     enabled: !isNew,
   });
   if (!isNew && existing.isLoading)
-    return <Spinner className="text-ink-mute" />;
+    return <PageLoader />;
   if (!isNew && !existing.data)
     return (
       <p className="text-ink-soft">
@@ -617,7 +617,7 @@ function ProductPicker({
             className="h-full min-w-0 flex-1 bg-transparent outline-none"
           />
         </label>
-        {isLoading && <Spinner className="text-ink-mute" />}
+        {isLoading && <PageLoader />}
         <ul className="max-h-80 divide-y divide-line overflow-y-auto rounded-xl border border-line">
           {results.map((p) => (
             <li key={p.id}>

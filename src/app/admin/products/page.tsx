@@ -3,10 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpToLine, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { ButtonLink, Media, ProductArt, Spinner } from "@/components/ui";
+import { ButtonLink, Media, ProductArt, Spinner , PageLoader } from "@/components/ui";
 import type { Visibility } from "@/db/schema";
 import { useTRPC } from "@/lib/trpc/client";
-import { cn, inr } from "@/lib/utils";
+import { adminLabel, cn, inr } from "@/lib/utils";
 import { Card, ConfirmButton, NumberCell, PageHeader, Tabs, td, th, useToast } from "../_ui";
 
 type Tab = "all" | "public" | "hidden" | "internal" | "pinned";
@@ -25,7 +25,7 @@ export default function ProductsPage() {
   const all = data ?? [];
   const list = all
     .filter((p) => (tab === "all" ? true : tab === "pinned" ? p.pinRank != null : p.visibility === tab))
-    .filter((p) => !q || `${p.name} ${p.sku} ${p.categoryName ?? ""}`.toLowerCase().includes(q.toLowerCase()));
+    .filter((p) => !q || `${p.name} ${p.adminName ?? ""} ${p.sku} ${p.categoryName ?? ""}`.toLowerCase().includes(q.toLowerCase()));
   const count = (t: Tab) => all.filter((p) => (t === "pinned" ? p.pinRank != null : p.visibility === t)).length;
 
   return (
@@ -65,7 +65,7 @@ export default function ProductsPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading && <tr><td className={td} colSpan={10}><Spinner className="text-ink-mute" /></td></tr>}
+              {isLoading && <tr><td className={td} colSpan={10}><PageLoader /></td></tr>}
               {!isLoading && list.length === 0 && <tr><td className={`${td} py-10 text-center text-ink-mute`} colSpan={10}>No products match.</td></tr>}
               {list.map((p) => {
                 const margin = p.price ? Math.round(((p.price - p.cost) / p.price) * 100) : 0;
@@ -75,7 +75,8 @@ export default function ProductsPage() {
                       <div className="flex items-center gap-3">
                         <div className="size-10 shrink-0 overflow-hidden rounded-lg bg-sky">{p.images[0] ? <Media src={p.images[0]} alt="" className="h-full w-full object-cover" /> : <ProductArt name={p.name} seed={p.id} className="[&_span]:text-base" />}</div>
                         <div className="min-w-0">
-                          <Link href={`/admin/products/${p.id}`} className="font-bold hover:text-royal">{p.name}</Link>
+                          <Link href={`/admin/products/${p.id}`} className="font-bold hover:text-royal">{adminLabel(p)}</Link>
+                          {p.adminName && <p className="text-xs text-ink-soft">Customers see: {p.name}</p>}
                           <p className="text-xs text-ink-mute">{p.comingSoon && <span className="mr-1.5 rounded-full bg-gold-soft px-1.5 py-0.5 font-bold text-gold-ink">Launching soon</span>}{p.sku}{p.inBundles.length > 0 && `, in ${p.inBundles.length} ${p.inBundles.length === 1 ? "box" : "boxes"}`}</p>
                         </div>
                       </div>

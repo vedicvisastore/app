@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { StatusPill } from "@/app/(store)/account/status-pill";
-import { Spinner } from "@/components/ui";
+import { Spinner , PageLoader } from "@/components/ui";
 import { useTRPC } from "@/lib/trpc/client";
 import { formatDate, inr, ORDER_STATUS_LABEL } from "@/lib/utils";
 import { Card, PageHeader, Stat, td, th } from "./_ui";
@@ -10,7 +10,7 @@ import { Card, PageHeader, Stat, td, th } from "./_ui";
 export default function Dashboard() {
   const trpc = useTRPC();
   const { data, isLoading } = useQuery(trpc.admin.dashboard.queryOptions());
-  if (isLoading || !data) return <Spinner className="text-ink-mute" />;
+  if (isLoading || !data) return <PageLoader />;
   const toPack = data.byStatus.paid ?? 0;
   const toShip = data.byStatus.packed ?? 0;
 

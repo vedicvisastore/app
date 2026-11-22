@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button, Spinner } from "@/components/ui";
+import { Button, Spinner , PageLoader } from "@/components/ui";
 import type { StoreSettings } from "@/lib/settings-defaults";
 import { useTRPC } from "@/lib/trpc/client";
 import { formatDate } from "@/lib/utils";
@@ -24,7 +24,7 @@ export default function SettingsPage() {
   }, [data, s]);
   const save = useMutation(trpc.admin.saveSettings.mutationOptions({ onSuccess: () => { qc.invalidateQueries({ queryKey: trpc.admin.settings.queryKey() }); toast("Settings saved"); }, onError: (e) => toast(e.message, "error") }));
 
-  if (!data || !s) return <Spinner className="text-ink-mute" />;
+  if (!data || !s) return <PageLoader />;
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const integ = [
     { ok: data.integrations.razorpay, label: "Razorpay payments", fix: "Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET" },

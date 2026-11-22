@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { StatusPill } from "@/app/(store)/account/status-pill";
-import { Spinner } from "@/components/ui";
+import { Spinner , PageLoader } from "@/components/ui";
 import { useTRPC } from "@/lib/trpc/client";
 import { formatDate, inr, ORDER_STATUS_LABEL } from "@/lib/utils";
 import { Card, PageHeader, Tabs, td, th } from "../_ui";
@@ -44,7 +44,7 @@ function Orders() {
           <table className="w-full text-sm">
             <thead><tr className="border-y border-line bg-sky/40"><th className={th}>Order</th><th className={th}>Customer</th><th className={th}>Items</th><th className={th}>Status</th><th className={th}>Tracking</th><th className={`${th} text-right`}>Total</th></tr></thead>
             <tbody>
-              {isLoading && <tr><td className={td} colSpan={6}><Spinner className="text-ink-mute" /></td></tr>}
+              {isLoading && <tr><td className={td} colSpan={6}><PageLoader /></td></tr>}
               {data?.length === 0 && <tr><td className={`${td} py-10 text-center text-ink-mute`} colSpan={6}>No orders here.</td></tr>}
               {data?.map((o) => (
                 <tr key={o.id} className="cursor-pointer border-b border-line last:border-0 hover:bg-sky/40" onClick={() => router.push(`/admin/orders/${o.id}`)}>

@@ -339,7 +339,7 @@ export function CartDrawer() {
               <p className="flex items-baseline justify-between">
                 <span className="text-ink-soft">Subtotal</span>
                 <span className="flex items-center gap-2 text-xl font-bold tabular-nums">
-                  {!synced && <Spinner className="text-ink-mute" />}
+                  {!synced && <Spinner className="text-gulal" />}
                   {quote && synced ? (
                     inr(quote.subtotal - quote.discountTotal)
                   ) : quote ? (

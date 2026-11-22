@@ -4,7 +4,7 @@ import { ArrowLeft, Copy, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { StatusPill } from "@/app/(store)/account/status-pill";
-import { Button, Spinner } from "@/components/ui";
+import { Button, Spinner , PageLoader } from "@/components/ui";
 import type { OrderStatus } from "@/db/schema";
 import { PRIMARY_ACTION } from "@/lib/order-machine";
 import { useTRPC } from "@/lib/trpc/client";
@@ -46,7 +46,7 @@ export default function AdminOrder({ params }: { params: Promise<{ id: string }>
     }),
   );
 
-  if (isLoading || !o) return <Spinner className="text-ink-mute" />;
+  if (isLoading || !o) return <PageLoader />;
   const a = o.shippingAddress;
   const primary = PRIMARY_ACTION[o.status];
   // Only offer the primary move if the state machine allows it for admins (it also hides "Mark as paid" on paid orders, etc.)

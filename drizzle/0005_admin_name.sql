@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "admin_name" text;

@@ -2,11 +2,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
-import { Button, Spinner } from "@/components/ui";
+import { Button, Spinner , PageLoader } from "@/components/ui";
 import type { Discount, DiscountKind, DiscountType } from "@/db/schema";
 import { discountState } from "@/lib/discount-status";
 import { useTRPC } from "@/lib/trpc/client";
-import { cn, formatDate, inr } from "@/lib/utils";
+import { adminLabel, cn, formatDate, inr } from "@/lib/utils";
 import { Card, ConfirmButton, Field, MoneyInput, PageHeader, Toggle, useToast } from "../_ui";
 
 const KIND: Record<DiscountKind, { label: string; help: string }> = {
@@ -84,7 +84,7 @@ export default function DiscountsPage() {
         ))}
       />
 
-      {isLoading && <Spinner className="text-ink-mute" />}
+      {isLoading && <PageLoader />}
       <div className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
         <div className="space-y-6">
           {(["sale", "coupon", "auto_cart"] as const).map((k) => {
@@ -185,7 +185,7 @@ export default function DiscountsPage() {
                   onChange={(e) => e.target.value && setD({ ...d, productIds: [...new Set([...d.productIds, Number(e.target.value)])] })}
                 >
                   <option value="">Add a specific product…</option>
-                  {products.data?.filter((p) => !d.productIds.includes(p.id)).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  {products.data?.filter((p) => !d.productIds.includes(p.id)).map((p) => <option key={p.id} value={p.id}>{adminLabel(p)}</option>)}
                 </select>
                 {d.productIds.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">

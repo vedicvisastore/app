@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Spinner } from "@/components/ui";
+import { Spinner , PageLoader } from "@/components/ui";
 import { useTRPC } from "@/lib/trpc/client";
 import { inr } from "@/lib/utils";
 import { Card, PageHeader, Stat, Tabs } from "../_ui";
@@ -70,7 +70,7 @@ export default function AnalyticsPage() {
       </div>
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <Card className="overflow-hidden p-3">
-          {grid.data && d ? <IndiaPixelMap grid={grid.data} points={d.points} total={d.total} /> : <div className="grid h-[600px] place-items-center"><Spinner className="text-ink-mute" /></div>}
+          {grid.data && d ? <IndiaPixelMap grid={grid.data} points={d.points} total={d.total} /> : <div className="grid h-[600px] place-items-center"><PageLoader /></div>}
           {d && d.unmapped > 0 && <p className="px-2 pt-2 text-xs text-ink-mute">{d.unmapped} orders have pincodes that aren’t in the India Post directory, so they’re counted but not on the map.</p>}
         </Card>
         <div className="space-y-6">

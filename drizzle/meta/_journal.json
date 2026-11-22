@@ -36,6 +36,13 @@
       "when": 1794585906938,
       "tag": "0004_festivals",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795368303418,
+      "tag": "0005_admin_name",
+      "breakpoints": true
     }
   ]
 }

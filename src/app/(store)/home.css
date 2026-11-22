@@ -186,3 +186,7 @@
 .home-picks { padding-top: clamp(1.25rem, 2.5vw, 2.25rem); }
 /* Phones: drop the story/promo tiles from the hero so bestsellers come into view sooner (both links live in the menu). */
 @media (max-width: 639px) { .home-discover { display: none; } .home-featured { min-height: 240px; } }
+
+/* Shop by category (single items) */
+.home-cats { padding-top: var(--home-section-space, var(--section-gap-s)); }
+.home-cat-media { display: block; aspect-ratio: 1; overflow: hidden; border-radius: 20px; background: var(--color-paper-2); }

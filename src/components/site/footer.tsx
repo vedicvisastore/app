@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { socialUrl, type StoreSettings } from "@/lib/settings-defaults";
 import type { SiteContent } from "@/content/defaults";
+import type { ShopLink } from "@/lib/shop-links";
 import { Container } from "../ui";
 import { Rangoli } from "./ornaments";
 import { InstagramIcon, YoutubeIcon } from "./social";
@@ -18,7 +19,7 @@ function Column({ title, children }: { title: string; children: React.ReactNode 
   );
 }
 
-export function Footer({ settings, categories = [], copy }: { settings: StoreSettings; categories?: { slug: string; name: string }[]; copy: SiteContent["footer"] }) {
+export function Footer({ settings, categories = [], sets = [], copy }: { settings: StoreSettings; categories?: { slug: string; name: string }[]; sets?: ShopLink[]; copy: SiteContent["footer"] }) {
   const ig = socialUrl("instagram", settings.instagram);
   const yt = socialUrl("youtube", settings.youtube);
   const creator = socialUrl("instagram", settings.creatorInstagram);
@@ -39,9 +40,9 @@ export function Footer({ settings, categories = [], copy }: { settings: StoreSet
 
         <nav className="grid grid-cols-2 gap-x-[var(--gap-columns)] gap-y-10 sm:grid-cols-3 lg:col-span-7" aria-label="Footer">
           <Column title={copy.shop}>
-            <li><Link className={linkCls} href="/shop?group=bhakti-boxes">Bhakti Boxes</Link></li>
-            <li><Link className={linkCls} href="/shop?group=japa-sets">Japa sets</Link></li>
-            <li><Link className={linkCls} href="/shop?group=shringar-kits">Shringar kits</Link></li>
+            {sets.map((s) => (
+              <li key={s.slug}><Link className={linkCls} href={s.href}>{s.label}</Link></li>
+            ))}
             <li><Link className={linkCls} href="/shop">Everything</Link></li>
           </Column>
           <Column title={copy.help}>

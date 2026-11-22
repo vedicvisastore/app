@@ -22,7 +22,9 @@ import { importSheet } from "@/lib/excel-apply";
 import { festivalState } from "@/lib/festival-status";
 import { safeRibbonHref } from "@/lib/settings-defaults";
 import { slugify } from "@/lib/utils";
-import { availability } from "../catalog";
+import { availability, listStoreProducts } from "../catalog";
+import { automaticHeroSlides, HERO_MAX_SLIDES, HERO_PRODUCTS } from "@/lib/hero-slides";
+import { getSite } from "../site-config";
 import { env } from "../env";
 import { nextStates } from "@/lib/order-machine";
 import { CONTENT_KEYS } from "@/content/defaults";
@@ -53,6 +55,7 @@ async function uniqueSlug(db: Parameters<typeof importSheet>[0], base: string, s
 const productInput = z.object({
   id: z.number().optional(),
   name: z.string().trim().min(2).max(120),
+  adminName: z.string().trim().max(120).nullable().optional(),
   sku: z.string().trim().min(2).max(40),
   slug: z.string().trim().max(120).optional(),
   kind: z.enum(["single", "bundle"]),
@@ -97,7 +100,7 @@ export const adminRouter = router({
         .groupBy(orderItems.name)
         .orderBy(desc(sum(orderItems.qty)))
         .limit(6),
-      db.select({ id: products.id, name: products.name, stock: products.stock, visibility: products.visibility }).from(products).where(and(eq(products.kind, "single"), isNotNull(products.stock), sql`${products.stock} <= 5`)).orderBy(products.stock).limit(12),
+      db.select({ id: products.id, name: sql<string>`coalesce(${products.adminName}, ${products.name})`, stock: products.stock, visibility: products.visibility }).from(products).where(and(eq(products.kind, "single"), isNotNull(products.stock), sql`${products.stock} <= 5`)).orderBy(products.stock).limit(12),
     ]);
     return { today, week, month, byStatus: Object.fromEntries(byStatus.map((s) => [s.status, s.n])) as Record<string, number>, recent, top, lowStock: singles };
   }),
@@ -107,7 +110,7 @@ export const adminRouter = router({
     .input(z.object({ q: z.string().optional(), kind: z.enum(["single", "bundle"]).optional(), visibility: z.enum(["public", "hidden", "internal"]).optional(), categoryId: z.number().optional() }))
     .query(async ({ ctx, input }) => {
       const where = and(
-        input.q ? or(ilike(products.name, `%${input.q}%`), ilike(products.sku, `%${input.q}%`)) : undefined,
+        input.q ? or(ilike(products.name, `%${input.q}%`), ilike(products.adminName, `%${input.q}%`), ilike(products.sku, `%${input.q}%`)) : undefined,
         input.kind ? eq(products.kind, input.kind) : undefined,
         input.visibility ? eq(products.visibility, input.visibility) : undefined,
         input.categoryId ? eq(products.categoryId, input.categoryId) : undefined,
@@ -121,12 +124,12 @@ export const adminRouter = router({
       const ids = rows.map((r) => r.p.id);
       const comps = ids.length
         ? await ctx.db
-            .select({ bundleId: bundleItems.bundleId, productId: bundleItems.productId, qty: bundleItems.qty, name: products.name, cost: products.cost, price: products.price, visibility: products.visibility })
+            .select({ bundleId: bundleItems.bundleId, productId: bundleItems.productId, qty: bundleItems.qty, name: sql<string>`coalesce(${products.adminName}, ${products.name})`, cost: products.cost, price: products.price, visibility: products.visibility })
             .from(bundleItems)
             .innerJoin(products, eq(products.id, bundleItems.productId))
             .where(or(inArray(bundleItems.bundleId, ids), inArray(bundleItems.productId, ids)))
         : [];
-      const bundleNames = new Map(rows.filter((r) => r.p.kind === "bundle").map((r) => [r.p.id, r.p.name]));
+      const bundleNames = new Map(rows.filter((r) => r.p.kind === "bundle").map((r) => [r.p.id, r.p.adminName ?? r.p.name]));
       const avail = await availability(ctx.db, rows.map((r) => r.p));
       return rows.map(({ p, catName }) => {
         const mine = comps.filter((c) => c.bundleId === p.id);
@@ -156,6 +159,7 @@ export const adminRouter = router({
 
     const values = {
       ...data,
+      adminName: data.adminName?.trim() && data.adminName.trim() !== data.name.trim() ? data.adminName.trim() : null,
       sku,
       slug: await uniqueSlug(ctx.db, slugify(data.slug || data.name), id),
       mrp: data.mrp && data.mrp > data.price ? data.mrp : null,
@@ -312,7 +316,7 @@ export const adminRouter = router({
 
   // ── Stock ledger ───────────────────────────────────────
   stockLedger: adminProcedure.input(z.object({ productId: z.number() })).query(async ({ ctx, input }) => {
-    const [p] = await ctx.db.select({ id: products.id, name: products.name, sku: products.sku, stock: products.stock, cost: products.cost, kind: products.kind }).from(products).where(eq(products.id, input.productId)).limit(1);
+    const [p] = await ctx.db.select({ id: products.id, name: sql<string>`coalesce(${products.adminName}, ${products.name})`, sku: products.sku, stock: products.stock, cost: products.cost, kind: products.kind }).from(products).where(eq(products.id, input.productId)).limit(1);
     if (!p) throw new TRPCError({ code: "NOT_FOUND" });
     const rows = await ctx.db
       .select({ m: stockMovements, orderNumber: orders.number, by: users.email })
@@ -415,7 +419,7 @@ export const adminRouter = router({
     const pick = new Map<string, number>();
     for (const it of items) {
       const comps = it.productId
-        ? await ctx.db.select({ name: products.name, qty: bundleItems.qty }).from(bundleItems).innerJoin(products, eq(products.id, bundleItems.productId)).where(eq(bundleItems.bundleId, it.productId))
+        ? await ctx.db.select({ name: sql<string>`coalesce(${products.adminName}, ${products.name})`, qty: bundleItems.qty }).from(bundleItems).innerJoin(products, eq(products.id, bundleItems.productId)).where(eq(bundleItems.bundleId, it.productId))
         : [];
       if (!comps.length) pick.set(it.name, (pick.get(it.name) ?? 0) + it.qty);
       for (const c of comps) pick.set(c.name, (pick.get(c.name) ?? 0) + c.qty * it.qty);
@@ -539,7 +543,7 @@ export const adminRouter = router({
   /** Light product list for pickers (festivals, etc.). */
   productPicker: adminProcedure.query(({ ctx }) =>
     ctx.db
-      .select({ id: products.id, name: products.name, kind: products.kind, visibility: products.visibility, image: sql<string | null>`${products.images}->>0`, price: products.price })
+      .select({ id: products.id, name: sql<string>`coalesce(${products.adminName}, ${products.name})`, kind: products.kind, visibility: products.visibility, image: sql<string | null>`${products.images}->>0`, price: products.price })
       .from(products)
       .where(notInArray(products.visibility, ["internal"]))
       .orderBy(products.name),
@@ -613,6 +617,78 @@ export const adminRouter = router({
         return href ? { text: i.text, href } : { text: i.text };
       });
       await saveSettings(ctx.db, { ribbon, ribbonSeconds: input.seconds, announcement: ribbon.map((r) => r.text).join(" · ") });
+      return { ok: true };
+    }),
+
+  // ── Shop menu ─────────────────────────────────────────
+  saveMenu: adminProcedure
+    .input(z.object({ categories: z.array(z.string().regex(/^[a-z0-9-]{1,80}$/)).max(40) }))
+    .mutation(async ({ ctx, input }) => {
+      await saveSettings(ctx.db, { menuCategories: [...new Set(input.categories)] });
+      return { ok: true };
+    }),
+
+  // ── Home banner (hero carousel) ───────────────────────
+  /** Saved slides, plus what the automatic banner shows right now (the starting point when setting it up). */
+  heroSlides: adminProcedure.query(async ({ ctx }) => {
+    const [settings, all, { content }, named] = await Promise.all([
+      getSettings(ctx.db),
+      listStoreProducts(ctx.db),
+      getSite(),
+      ctx.db.select({ id: products.id, adminName: products.adminName }).from(products).where(isNotNull(products.adminName)),
+    ]);
+    const adminNames = new Map(named.map((n) => [n.id, n.adminName!]));
+    return {
+      saved: settings.heroSlides,
+      automatic: automaticHeroSlides(all, content.home, content.nav.boxes),
+      products: all.map((p) => ({ id: p.id, name: adminNames.get(p.id) ?? p.name, image: p.image, price: p.price, kind: p.kind, group: p.bundleGroup, category: p.categoryName, soldOut: p.available === 0 })),
+    };
+  }),
+  saveHeroSlides: adminProcedure
+    .input(
+      z.object({
+        slides: z
+          .array(
+            z.object({
+              id: z.string().regex(/^[\w-]{1,40}$/),
+              kind: z.enum(["brand", "feature", "trio"]),
+              label: z.string().trim().max(40).optional(),
+              title: z.string().trim().min(1, "Every slide needs a headline").max(80),
+              lede: z.string().trim().max(200).optional(),
+              action: z.string().trim().min(1, "Every slide needs button words").max(32),
+              href: z.string().trim().min(1).max(300),
+              secondaryLabel: z.string().trim().max(32).optional(),
+              secondaryHref: z.string().trim().max(300).optional(),
+              productIds: z.array(z.number().int()).max(3),
+              hidden: z.boolean().optional(),
+            }),
+          )
+          .max(HERO_MAX_SLIDES),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const slides = input.slides.map((s, i) => {
+        const n = i + 1;
+        const href = safeRibbonHref(s.href);
+        if (!href) throw new TRPCError({ code: "BAD_REQUEST", message: `Slide ${n}: the button link must start with / (a store page) or https://` });
+        const secondaryHref = s.secondaryLabel ? safeRibbonHref(s.secondaryHref) : undefined;
+        if (s.secondaryLabel && !secondaryHref) throw new TRPCError({ code: "BAD_REQUEST", message: `Slide ${n}: the second link must start with / or https://` });
+        const need = HERO_PRODUCTS[s.kind];
+        if (s.productIds.length < need) throw new TRPCError({ code: "BAD_REQUEST", message: `Slide ${n}: pick ${need === 1 ? "a product" : `${need} products`}` });
+        return {
+          id: s.id,
+          kind: s.kind,
+          ...(s.label ? { label: s.label } : {}),
+          title: s.title,
+          ...(s.lede && s.kind !== "trio" ? { lede: s.lede } : {}),
+          action: s.action,
+          href,
+          ...(s.secondaryLabel && secondaryHref ? { secondaryLabel: s.secondaryLabel, secondaryHref } : {}),
+          productIds: s.productIds.slice(0, need),
+          ...(s.hidden ? { hidden: true } : {}),
+        };
+      });
+      await saveSettings(ctx.db, { heroSlides: slides });
       return { ok: true };
     }),
 

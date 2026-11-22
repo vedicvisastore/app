@@ -33,6 +33,8 @@ export const products = pgTable(
     id: serial("id").primaryKey(),
     sku: text("sku").notNull().unique(),
     name: text("name").notNull(),
+    /** Admin-only friendly name (e.g. "Hari box, blue 2026 pack"); shoppers always see `name`. Null = same as name. */
+    adminName: text("admin_name"),
     slug: text("slug").notNull().unique(),
     kind: text("kind").$type<ProductKind>().notNull().default("single"),
     /** Group label for bundles, e.g. "Bhakti Boxes", "Japa Sets", "Shringar Kits". */

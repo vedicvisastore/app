@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { RibbonItem } from "@/lib/settings-defaults";
+import type { ShopLink } from "@/lib/shop-links";
 import { cn } from "@/lib/utils";
 import { useCart } from "../cart/cart-context";
 import { useContent } from "./content-context";
@@ -20,10 +21,12 @@ type Props = {
   signedIn: boolean;
   isAdmin: boolean;
   categories: MenuCategory[];
+  /** Live box/set groups and single items (see shopLinks): only what the store actually sells. */
+  sets: ShopLink[];
   festivals: MenuFestival[];
 };
 
-export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, festivals }: Props) {
+export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, sets, festivals }: Props) {
   const copy = useContent().nav;
   const cart = useCart();
   const router = useRouter();
@@ -32,31 +35,6 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
   const [search, setSearch] = useState(false);
   const [q, setQ] = useState("");
   const [bump, setBump] = useState(false);
-  // The bar takes a soft pastel of whichever page section is passing under it (sections set data-tint).
-  const headerRef = useRef<HTMLElement>(null);
-  const [tint, setTint] = useState<string | null>(null);
-  useEffect(() => {
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      const line = (headerRef.current?.getBoundingClientRect().bottom ?? 0) + 1;
-      let current: string | null = null;
-      for (const el of document.querySelectorAll<HTMLElement>("main [data-tint]")) {
-        const r = el.getBoundingClientRect();
-        if (r.top <= line && r.bottom > line) current = el.dataset.tint ?? null;
-      }
-      setTint(current ?? routeTint(pathname));
-    };
-    const onScroll = () => void (raf ||= requestAnimationFrame(update));
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [pathname]);
 
   useEffect(() => {
     setMenu(false);
@@ -79,25 +57,23 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
     return () => void (document.body.style.overflow = "");
   }, [menu]);
 
-  const sets = [
-    { href: "/shop?group=bhakti-boxes", label: copy.boxes },
-    { href: "/shop?group=japa-sets", label: copy.japa },
-    { href: "/shop?group=shringar-kits", label: copy.shringar },
-  ];
   const cats = categories.filter((c) => c.slug !== "bhakti-boxes-kits");
   const links = [
     { href: "/new", label: copy.newLaunches },
     { href: "/deals", label: copy.deals, dot: "bg-gulal" },
     ...festivals.map((f) => ({ href: `/c/${f.slug}`, label: f.name, dot: DOT[f.accent] ?? "bg-gulal" })),
   ];
-  const kits = sets.slice(1);
+  // Top-level menu: boxes and single items get their own links; any other sets go under "Kits & sets".
+  const boxes = sets.find((s) => s.slug === "bhakti-boxes");
+  const items = sets.find((s) => s.slug === "items");
+  const kits = sets.filter((s) => s !== boxes && s !== items);
   const help = [
     { href: "/track", label: copy.track },
     { href: signedIn ? "/account" : "/login?next=/account", label: copy.orders },
     { href: "/contact", label: copy.contact },
     { href: "/shipping", label: copy.shipping },
   ];
-  const navLink = (active: boolean) => cn("flex items-center gap-2 py-3 text-[0.95rem] whitespace-nowrap transition-colors hover:text-ink", active ? "font-bold text-ink" : "text-ink-soft");
+  const navLink = (active: boolean) => cn("vv-menu-item flex items-center gap-2 py-3 text-[1.0625rem] font-medium whitespace-nowrap transition-colors hover:text-gold", active ? "font-bold text-gold" : "text-white");
   const isActive = (href: string) => pathname === href.split("?")[0];
 
   const submitSearch = (e: React.FormEvent) => {
@@ -139,7 +115,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
         </div>
       )}
 
-      <header ref={headerRef} className="vv-header sticky top-0 z-[300] border-b border-line bg-paper" data-tint={tint ?? undefined}>
+      <header className="vv-header sticky top-0 z-[300] border-b border-line bg-paper lg:border-b-0">
         {/* Top row: search · logo (centre) · account and cart */}
         <div className="wrap grid h-[84px] grid-cols-[1fr_auto_1fr] items-center gap-3 sm:h-[92px] lg:h-[120px]">
           <div className="flex items-center gap-1">
@@ -189,8 +165,8 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
         </div>
 
         {/* Second row (desktop): the menu */}
-        <nav className="hidden border-t border-line lg:block" aria-label="Main">
-          <ul className="wrap flex h-12 items-center justify-center gap-6 xl:gap-8">
+        <nav className="vv-menu hidden bg-shyam lg:block" aria-label="Main">
+          <ul className="wrap flex h-14 items-center justify-center gap-6 xl:gap-9">
             <li>
               <Dropdown label={copy.shop} active={pathname === "/shop"} pathname={pathname} wide>
                 <div className="grid grid-cols-[1fr_1.6fr] gap-6">
@@ -224,11 +200,14 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
                 </div>
               </Dropdown>
             </li>
-            <li>
-              <Link href={sets[0].href} className={navLink(false)}>
-                {copy.boxes}
-              </Link>
-            </li>
+            {[boxes, items].filter((s) => !!s).map((s) => (
+              <li key={s.slug}>
+                <Link href={s.href} className={navLink(false)}>
+                  {s.label}
+                </Link>
+              </li>
+            ))}
+            {kits.length > 0 && (
             <li>
               <Dropdown label={copy.kits} active={false} pathname={pathname}>
                 <ul className="space-y-1">
@@ -242,6 +221,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, f
                 </ul>
               </Dropdown>
             </li>
+            )}
             {links.map((l) => (
               <li key={l.href}>
                 <Link href={l.href} aria-current={isActive(l.href) ? "page" : undefined} className={navLink(isActive(l.href))}>
@@ -414,7 +394,7 @@ function Dropdown({ label, active, pathname, wide, alignRight, children }: { lab
   return (
     <div ref={ref} className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
       <button
-        className={cn("flex items-center gap-1 py-3 text-[0.95rem] whitespace-nowrap transition-colors hover:text-ink", active ? "font-bold text-ink" : "text-ink-soft")}
+        className={cn("vv-menu-item flex items-center gap-1 py-3 text-[1.0625rem] font-medium whitespace-nowrap transition-colors hover:text-gold", active ? "font-bold text-gold" : "text-white")}
         aria-expanded={open}
         aria-haspopup="true"
         onClick={() => setOpen((o) => !o)}
@@ -425,7 +405,7 @@ function Dropdown({ label, active, pathname, wide, alignRight, children }: { lab
       <div
         className={cn(
           "absolute top-full z-10 pt-1 transition duration-[var(--dur-short)]",
-          wide ? "left-1/2 w-[38rem] -translate-x-1/2" : alignRight ? "right-0 min-w-56" : "left-1/2 min-w-52 -translate-x-1/2",
+          wide ? "left-0 w-[38rem]" : alignRight ? "right-0 min-w-56" : "left-1/2 min-w-52 -translate-x-1/2",
           open ? "visible opacity-100" : "invisible translate-y-1 opacity-0",
         )}
       >
@@ -433,26 +413,4 @@ function Dropdown({ label, active, pathname, wide, alignRight, children }: { lab
       </div>
     </div>
   );
-}
-
-/** Every page has a colour: used wherever no tagged section is under the bar. */
-function routeTint(path: string) {
-  const first = path.split("/")[1] ?? "";
-  const map: Record<string, string> = {
-    "": "royal",
-    shop: "peacock",
-    deals: "gulal",
-    new: "mor",
-    c: "gulal",
-    p: "royal",
-    cart: "gold",
-    checkout: "gold",
-    account: "peacock",
-    login: "gulal",
-    track: "mor",
-    contact: "mor",
-    about: "gold",
-    shipping: "peacock",
-  };
-  return map[first] ?? "royal";
 }

@@ -2,7 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
-import { Button, Spinner } from "@/components/ui";
+import { Button, Spinner , PageLoader } from "@/components/ui";
 import { useTRPC } from "@/lib/trpc/client";
 import { Card, ConfirmButton, Field, PageHeader, td, th, useToast } from "../_ui";
 
@@ -26,7 +26,7 @@ export default function CategoriesPage() {
           <table className="w-full text-sm">
             <thead><tr className="border-b border-line bg-sky/40"><th className={th}>Name</th><th className={th}>Description</th><th className={th}>Products</th><th className={th}>Sort</th><th className={th} /></tr></thead>
             <tbody>
-              {isLoading && <tr><td className={td} colSpan={5}><Spinner className="text-ink-mute" /></td></tr>}
+              {isLoading && <tr><td className={td} colSpan={5}><PageLoader /></td></tr>}
               {data?.map((c) => (
                 <tr key={c.id} className="border-b border-line last:border-0">
                   <td className={`${td} font-bold`}>{c.name}<p className="text-xs font-normal text-ink-mute">/shop?category={c.slug}</p></td>

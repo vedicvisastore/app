@@ -25,3 +25,12 @@ export function PreviewScrollKeeper() {
   }, [path]);
   return null;
 }
+
+/** Inside the admin's preview frame: no scrollbar, so the phone preview is a true phone width. */
+export function FramedNoScrollbar() {
+  useEffect(() => {
+    if (window.self !== window.top) document.documentElement.style.scrollbarWidth = "none";
+  }, []);
+  return null;
+}
+

@@ -1,3 +1,5 @@
+import type { HeroSlideConfig } from "./hero-slides";
+
 /** One message in the scrolling ribbon above the header. href: optional link (a store path like /deals, or https://). */
 export type RibbonItem = { text: string; href?: string };
 
@@ -23,6 +25,10 @@ export type StoreSettings = {
   creatorInstagram: string;
   /** YouTube channel URL or @handle */
   youtube: string;
+  /** Home banner slides set up in Admin → Home banner. Empty = automatic. */
+  heroSlides: HeroSlideConfig[];
+  /** Category slugs shown in the header's Shop menu, in order. Empty = every category with products. */
+  menuCategories: string[];
 };
 
 export const DEFAULT_SETTINGS: StoreSettings = {
@@ -38,6 +44,8 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   instagram: "https://www.instagram.com/vedicvisastore",
   creatorInstagram: "https://www.instagram.com/vedicvisa",
   youtube: "https://www.youtube.com/@vedicvisa",
+  heroSlides: [],
+  menuCategories: [],
 };
 
 /** Accepts a handle (@vedicvisa) or a full URL and returns a safe https link, or null. */

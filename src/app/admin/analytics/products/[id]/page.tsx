@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { use } from "react";
-import { Spinner } from "@/components/ui";
+import { Spinner , PageLoader } from "@/components/ui";
 import { useTRPC } from "@/lib/trpc/client";
 import { formatDate, inr } from "@/lib/utils";
 import { Card, Stat, Tabs } from "../../../_ui";
@@ -24,7 +24,7 @@ export default function ProductAnalyticsDetail({ params }: { params: Promise<{ i
   const range = RANGES.some((r) => r.value === sp.get("days")) ? sp.get("days")! : "30";
   const { data: d, isLoading, error } = useQuery(trpc.admin.productAnalyticsDetail.queryOptions({ id: Number(id), days: Number(range) }));
 
-  if (isLoading) return <Spinner className="text-ink-mute" />;
+  if (isLoading) return <PageLoader />;
   if (error || !d) return <p className="text-ink-soft">{error?.message ?? "Not found"}</p>;
   const maxUnits = Math.max(1, ...d.series.map((w) => w.units));
   const stateTotal = d.states.reduce((s, r) => s + r.units, 0);

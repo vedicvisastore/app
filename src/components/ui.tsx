@@ -96,6 +96,30 @@ export function Container({ className, ...rest }: React.HTMLAttributes<HTMLDivEl
   return <div className={cn("wrap", className)} {...rest} />;
 }
 
-export function Spinner({ className }: { className?: string }) {
-  return <span className={cn("inline-block size-4 animate-spin rounded-full border-2 border-current border-r-transparent", className)} aria-hidden />;
+/** Five petal angles (degrees) around the lotus base, left to right. */
+const PETALS = [-64, -32, 0, 32, 64];
+
+/**
+ * Loading indicator: a small lotus whose petals light up one after another, round and round, so it reads as
+ * "working" rather than decoration. Takes the text colour (works inside buttons).
+ */
+export function Spinner({ className, label = "Loading" }: { className?: string; label?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={cn("vv-lotus inline-block size-4 shrink-0", className)} role="img" aria-label={label}>
+      {PETALS.map((deg, i) => (
+        <path key={deg} className="vv-lotus-p" style={{ animationDelay: `${i * 0.14}s` }} transform={`rotate(${deg} 12 17)`} d="M12 4.5c2.4 2.9 2.6 8 0 12.5-2.6-4.5-2.4-9.6 0-12.5z" fill="currentColor" />
+      ))}
+      <path d="M4.5 19.2q7.5 2.6 15 0" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity=".55" />
+    </svg>
+  );
+}
+
+/** Full-area loader for a page or panel that is fetching. */
+export function PageLoader({ className, label = "Loading" }: { className?: string; label?: string }) {
+  return (
+    <div className={cn("flex flex-col items-center justify-center gap-2 py-16 text-gulal", className)} role="status">
+      <Spinner className="size-10" label={label} />
+      <span className="text-xs font-bold tracking-[0.08em] text-ink-mute uppercase">{label}…</span>
+    </div>
+  );
 }

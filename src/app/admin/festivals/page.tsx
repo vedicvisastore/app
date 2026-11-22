@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, ExternalLink, Plus } from "lucide-react";
 import Link from "next/link";
-import { ButtonLink, Spinner } from "@/components/ui";
+import { ButtonLink, Spinner , PageLoader } from "@/components/ui";
 import { ACCENT_DOT, festivalDay } from "@/lib/festival-accent";
 import { FESTIVAL_STATE_LABEL, type FestivalState } from "@/lib/festival-status";
 import { useTRPC } from "@/lib/trpc/client";
@@ -39,7 +39,7 @@ export default function FestivalsAdmin() {
         }
       />
 
-      {isLoading && <Spinner className="text-ink-mute" />}
+      {isLoading && <PageLoader />}
 
       {data?.length === 0 && (
         <Card className="flex flex-col items-center gap-3 px-6 py-14 text-center">

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { use, useState } from "react";
-import { Button, Spinner } from "@/components/ui";
+import { Button, Spinner , PageLoader } from "@/components/ui";
 import type { StockReason } from "@/db/schema";
 import { useTRPC } from "@/lib/trpc/client";
 import { cn, formatDate, inr } from "@/lib/utils";
@@ -41,7 +41,7 @@ export default function StockLedger({ params }: { params: Promise<{ id: string }
     }),
   );
 
-  if (isLoading || !data) return <Spinner className="text-ink-mute" />;
+  if (isLoading || !data) return <PageLoader />;
   const { product: p, movements, totals } = data;
   const qty = Number(f.qty);
 

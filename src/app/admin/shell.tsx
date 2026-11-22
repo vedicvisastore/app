@@ -1,5 +1,5 @@
 "use client";
-import { CalendarHeart, Map as MapIcon, Megaphone, Palette, Type, BadgePercent, Boxes, FileSpreadsheet, FolderTree, LayoutDashboard, Menu, Package, Settings, ShoppingCart, Store, X } from "lucide-react";
+import { GalleryHorizontal, PanelTop, CalendarHeart, Map as MapIcon, Megaphone, Palette, Type, BadgePercent, Boxes, FileSpreadsheet, FolderTree, LayoutDashboard, Menu, Package, Settings, ShoppingCart, Store, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -16,6 +16,8 @@ const NAV = [
   { href: "/admin/categories", label: "Categories", icon: FolderTree },
   { href: "/admin/discounts", label: "Sales & coupons", icon: BadgePercent },
   { href: "/admin/festivals", label: "Custom pages", icon: CalendarHeart },
+  { href: "/admin/hero", label: "Home banner", icon: GalleryHorizontal },
+  { href: "/admin/menu", label: "Shop menu", icon: PanelTop },
   { href: "/admin/ribbon", label: "Top ribbon", icon: Megaphone },
   { href: "/admin/themes", label: "Themes", icon: Palette },
   { href: "/admin/content", label: "Store text", icon: Type },

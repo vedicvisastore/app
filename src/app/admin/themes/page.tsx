@@ -2,7 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button, Spinner } from "@/components/ui";
+import { Button, Spinner , PageLoader } from "@/components/ui";
 import { useTRPC } from "@/lib/trpc/client";
 import { customTokens, DEFAULT_CUSTOM, THEMES, themeTokens, type CustomTheme } from "@/lib/themes";
 import { cn } from "@/lib/utils";
@@ -57,7 +57,7 @@ export default function ThemesPage() {
     }),
   );
 
-  if (isLoading || !data) return <Spinner className="text-ink-mute" />;
+  if (isLoading || !data) return <PageLoader />;
   const active = data.theme;
 
   return (

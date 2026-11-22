@@ -3,10 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, Plus } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useState } from "react";
-import { ButtonLink, Media, ProductArt, Spinner } from "@/components/ui";
+import { ButtonLink, Media, ProductArt, Spinner , PageLoader } from "@/components/ui";
 import { useTRPC } from "@/lib/trpc/client";
-import { cn, inr } from "@/lib/utils";
-import { Card, NumberCell, PageHeader, Tabs, useToast } from "../_ui";
+import { adminLabel, cn, inr } from "@/lib/utils";
+import { Card, NumberCell, PageHeader, Tabs, Toggle, useToast } from "../_ui";
 
 export default function BundlesPage() {
   const trpc = useTRPC();
@@ -18,7 +18,13 @@ export default function BundlesPage() {
   const bundles = useQuery(trpc.admin.products.queryOptions({ kind: "bundle" }));
   const singles = useQuery({ ...trpc.admin.products.queryOptions({ kind: "single" }), enabled: view === "matrix" });
   const quick = useMutation(
-    trpc.admin.quickUpdate.mutationOptions({ onSuccess: () => { qc.invalidateQueries({ queryKey: trpc.admin.products.queryKey() }); toast("Saved"); } }),
+    trpc.admin.quickUpdate.mutationOptions({
+      onSuccess: (_d, v) => {
+        qc.invalidateQueries({ queryKey: trpc.admin.products.queryKey() });
+        toast(v.visibility === "hidden" ? "Hidden from the store" : v.visibility === "public" ? "Showing in the store" : "Saved");
+      },
+      onError: (e) => toast(e.message, "error"),
+    }),
   );
 
   const list = bundles.data ?? [];
@@ -29,7 +35,7 @@ export default function BundlesPage() {
     <>
       <PageHeader
         title="Boxes & sets"
-        description="Every box and set, with what it costs you and what you earn. Tap one to see what’s inside."
+        description="Every box and set, with what it costs you and what you earn. Tap one to see what’s inside. Use the switch to show it in the store or hide it (hidden boxes keep their contents, sales and stock)."
         actions={<ButtonLink href="/admin/products/new?kind=bundle" size="sm"><Plus className="size-4" /> New box</ButtonLink>}
       />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -42,7 +48,7 @@ export default function BundlesPage() {
           ]}
         />
       </div>
-      {bundles.isLoading && <Spinner className="text-ink-mute" />}
+      {bundles.isLoading && <PageLoader />}
 
       {view === "cards" && (
         <>
@@ -55,12 +61,13 @@ export default function BundlesPage() {
           </div>
 
           <Card className="divide-y divide-line overflow-hidden">
-            <div className="hidden grid-cols-[minmax(0,2.2fr)_repeat(3,minmax(0,1fr))_2rem] gap-3 bg-sky/40 px-4 py-2.5 text-xs font-bold text-ink-soft md:grid">
+            <div className="hidden grid-cols-[minmax(0,2.2fr)_repeat(3,minmax(0,1fr))_2rem_auto] gap-3 bg-sky/40 px-4 py-2.5 text-xs font-bold text-ink-soft md:grid">
               <span>Box</span>
               <span className="text-right">Price</span>
               <span className="text-right">You earn</span>
               <span className="text-right">Can pack</span>
               <span />
+              <span className="w-[6.5rem]">In store</span>
             </div>
             {shown.map((b) => {
               const profit = b.price - b.componentCost;
@@ -70,17 +77,19 @@ export default function BundlesPage() {
               const isOpen = open === b.id;
               return (
                 <div key={b.id}>
+                  <div className={cn("flex items-center gap-3 pr-4 hover:bg-sky/30", b.visibility !== "public" && "bg-paper-2/60")}>
                   <button
                     onClick={() => setOpen(isOpen ? null : b.id)}
                     aria-expanded={isOpen}
-                    className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left hover:bg-sky/30 md:grid-cols-[minmax(0,2.2fr)_repeat(3,minmax(0,1fr))_2rem]"
+                    className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3 pl-4 text-left md:grid-cols-[minmax(0,2.2fr)_repeat(3,minmax(0,1fr))_2rem]"
                   >
                     <span className="flex min-w-0 items-center gap-3">
                       <span className="h-12 w-10 shrink-0 overflow-hidden rounded-lg bg-sky">
                         {b.images[0] ? <Media src={b.images[0]} alt="" className="h-full w-full object-cover" /> : <ProductArt name={b.name} seed={b.id} />}
                       </span>
                       <span className="min-w-0">
-                        <span className="block truncate font-bold">{b.name}</span>
+                        <span className="block truncate font-bold">{adminLabel(b)}</span>
+                        {b.adminName && <span className="block truncate text-xs text-ink-soft">Customers see: {b.name}</span>}
                         <span className="flex flex-wrap items-center gap-x-2 text-xs text-ink-mute">
                           <span>{visible.length} items</span>
                           {b.visibility !== "public" && <span className="rounded-full bg-line px-1.5 text-ink-soft">Hidden</span>}
@@ -99,6 +108,14 @@ export default function BundlesPage() {
                     <span className={cn("hidden text-right tabular-nums md:block", b.available === 0 && "font-bold text-gulal")}>{b.available ?? "No limit"}</span>
                     <ChevronDown className={cn("hidden size-4 justify-self-end text-ink-mute transition-transform md:block", isOpen && "rotate-180")} aria-hidden />
                   </button>
+                  <span className="w-[6.5rem] shrink-0">
+                    <Toggle
+                      checked={b.visibility === "public"}
+                      onChange={(on) => quick.mutate({ id: b.id, visibility: on ? "public" : "hidden" })}
+                      label={b.visibility === "public" ? "Showing" : "Hidden"}
+                    />
+                  </span>
+                  </div>
 
                   {isOpen && (
                     <div className="space-y-5 bg-sky/20 px-4 pt-2 pb-5">
@@ -158,7 +175,7 @@ export default function BundlesPage() {
       {view === "matrix" && (
         <Card className="overflow-x-auto">
           {singles.isLoading ? (
-            <div className="p-5"><Spinner className="text-ink-mute" /></div>
+            <div className="p-5"><PageLoader /></div>
           ) : (
             <table className="text-sm">
               <thead>
@@ -167,7 +184,7 @@ export default function BundlesPage() {
                   <th className="px-2 py-2 text-right text-xs font-bold text-ink-soft">Cost</th>
                   {list.map((b) => (
                     <th key={b.id} className="h-36 w-10 px-1 align-bottom">
-                      <Link href={`/admin/products/${b.id}`} className="block origin-bottom-left translate-x-5 -rotate-45 text-left text-xs font-bold whitespace-nowrap hover:text-royal">{b.name}</Link>
+                      <Link href={`/admin/products/${b.id}`} className="block origin-bottom-left translate-x-5 -rotate-45 text-left text-xs font-bold whitespace-nowrap hover:text-royal">{adminLabel(b)}</Link>
                     </th>
                   ))}
                   <th className="px-3 py-2 text-left text-xs font-bold text-ink-soft">Used in</th>
@@ -184,7 +201,7 @@ export default function BundlesPage() {
                         const n = list.filter((b) => b.components.some((c) => c.productId === p.id)).length;
                         return (
                           <tr key={p.id} className="border-b border-line/70 hover:bg-sky/30">
-                            <td className="sticky left-0 z-10 bg-paper px-3 py-1.5"><Link href={`/admin/products/${p.id}`} className="hover:text-royal">{p.name}</Link></td>
+                            <td className="sticky left-0 z-10 bg-paper px-3 py-1.5"><Link href={`/admin/products/${p.id}`} className="hover:text-royal">{adminLabel(p)}</Link></td>
                             <td className="px-2 py-1.5 text-right text-ink-soft tabular-nums">{inr(p.cost)}</td>
                             {list.map((b) => {
                               const c = b.components.find((x) => x.productId === p.id);

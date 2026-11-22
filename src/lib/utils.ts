@@ -76,3 +76,6 @@ export function launchLabel(launchAt: Date | string | null | undefined) {
 
 /** Link from the admin panel to a storefront page. On admin.vedicvisa.com a bare "/x" would open the admin's /x, so use the store's full address when known. */
 export const storeHref = (path: string) => `${(process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "")}${path}`;
+
+/** What admin screens call a product: its admin-only name when set, else the customer name. */
+export const adminLabel = (p: { name: string; adminName?: string | null }) => p.adminName || p.name;

@@ -39,7 +39,7 @@ export function PincodeCheck({ daysMin, daysMax }: { daysMin: number; daysMax: n
             value={pin}
             onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
             placeholder={copy.pincodePlaceholder}
-            className="field h-9 !rounded-full !py-1 text-sm"
+            className="field h-11 !rounded-full !py-1 text-base sm:h-9 sm:text-sm"
           />
           <button className="shrink-0 rounded-full px-3 font-bold text-royal hover:bg-sky disabled:opacity-40" disabled={pin.length !== 6}>
             Check

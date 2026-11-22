@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { addresses, orderEvents, orderItems, orders, users } from "@/db/schema";
 import { clearSessionCookie, createSession, destroySession, requestOtp, sessionCookie, verifyOtp } from "../auth";
-import { filterProducts, listStoreProducts, liveDiscounts, productDetail, storeCategories } from "../catalog";
+import { filterProducts, listStoreProducts, liveDiscounts, liveGroups, productDetail, storeCategories } from "../catalog";
 import { festivalPage, liveFestivals } from "../festivals";
 import { env } from "../env";
 import { enforce, LIMITS } from "../rate-limit";
@@ -91,6 +91,11 @@ export const catalogRouter = router({
     return p;
   }),
   categories: publicProcedure.query(({ ctx }) => storeCategories(ctx.db)),
+  /** Box/set groups with products in the store, plus how many single items there are (menus, shop filters). */
+  groups: publicProcedure.query(async ({ ctx }) => {
+    const all = await listStoreProducts(ctx.db);
+    return { groups: liveGroups(all), items: all.filter((p) => p.kind === "single").length };
+  }),
   /** A box with its contents for the home page (doesn't count as a product view). */
   spotlight: publicProcedure.input(z.object({ slug: z.string() })).query(({ ctx, input }) => productDetail(ctx.db, input.slug, false)),
   /** Live custom pages (menu + /c/<slug>). */

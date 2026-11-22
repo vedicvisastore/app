@@ -1,3 +1,4 @@
+import { searchProducts } from "@/lib/search";
 import { discountState } from "@/lib/discount-status";
 import { cached } from "./cache";
 import { redisGetJson, redisSetJson } from "./redis";
@@ -188,6 +189,19 @@ async function loadStoreProducts(db: DB): Promise<CardProduct[]> {
   return cards.map(({ pinRank: _p, ...c }) => c);
 }
 
+/** `/shop?group=items`: every single item (malas, tilak, itra…), as opposed to boxes and sets. */
+export const ITEMS_GROUP = "items";
+export const groupSlug = (group: string) => group.toLowerCase().replace(/\s+/g, "-");
+
+/** Box/set groups that have something in the store right now, most products first, Bhakti Boxes always first. */
+export function liveGroups(all: CardProduct[]) {
+  const counts = new Map<string, number>();
+  for (const p of all) if (p.kind === "bundle" && p.bundleGroup) counts.set(p.bundleGroup, (counts.get(p.bundleGroup) ?? 0) + 1);
+  return [...counts]
+    .sort((a, b) => Number(b[0] === "Bhakti Boxes") - Number(a[0] === "Bhakti Boxes") || b[1] - a[1])
+    .map(([name, count]) => ({ name, slug: groupSlug(name), count }));
+}
+
 export type ShopQuery = {
   category?: string;
   group?: string;
@@ -199,12 +213,12 @@ export type ShopQuery = {
 export function filterProducts(all: CardProduct[], f: ShopQuery) {
   let list = all;
   if (f.category) list = list.filter((p) => p.categorySlug === f.category);
-  if (f.group) list = list.filter((p) => p.bundleGroup?.toLowerCase().replace(/\s+/g, "-") === f.group);
-  if (f.q) {
-    const q = f.q.toLowerCase();
-    list = list.filter((p) => `${p.name} ${p.tagline ?? ""} ${p.categoryName ?? ""} ${p.bundleGroup ?? ""}`.toLowerCase().includes(q));
-  }
+  if (f.group === ITEMS_GROUP) list = list.filter((p) => p.kind === "single");
+  else if (f.group) list = list.filter((p) => p.bundleGroup && groupSlug(p.bundleGroup) === f.group);
+  // Forgiving search (typos, half words, spelling variants); results come best match first.
+  if (f.q?.trim()) list = searchProducts(f.q, list);
   if (f.inStock) list = list.filter((p) => p.available !== 0 && !p.upcoming);
+  if (f.q?.trim() && (!f.sort || f.sort === "trending")) return list;
   if (f.sort === "price-asc") list = [...list].sort((a, b) => a.price - b.price);
   if (f.sort === "price-desc") list = [...list].sort((a, b) => b.price - a.price);
   if (f.sort === "new") list = [...list].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
