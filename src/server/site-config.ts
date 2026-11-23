@@ -7,7 +7,7 @@ import { AwsClient } from "aws4fetch";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { DEFAULT_CONTENT, mergeContent, type SiteContent } from "@/content/defaults";
 import { DEFAULT_CUSTOM, themeCss, themeTokens, THEMES, type CustomTheme } from "@/lib/themes";
-import { cached, clearCache } from "./cache";
+import { clearCache, sharedCached } from "./cache";
 import { tag } from "@/lib/stega";
 import { mergeImages, type SiteImages } from "@/content/images";
 import { env } from "./env";
@@ -72,8 +72,8 @@ async function readRaw(): Promise<SiteConfig> {
 }
 
 export function getSiteConfig(): Promise<SiteConfig> {
-  // 5s: a saved theme or text shows on every server within seconds; an R2 binding read is a few ms and free-tier ops are plentiful.
-  return cached("site-config", 5_000, readRaw);
+  // Saved text, theme and pictures: memory 10 s, then Redis until the next save (which clears both).
+  return sharedCached("site-config", { memoryMs: 10_000 }, readRaw);
 }
 
 export async function saveSiteConfig(next: SiteConfig) {
@@ -92,7 +92,7 @@ export async function saveSiteConfig(next: SiteConfig) {
     await mkdir(p.replace(/\/[^/]+$/, ""), { recursive: true });
     await writeFile(p, body, "utf8");
   }
-  clearCache();
+  await clearCache();
 }
 
 /** What every page needs: merged copy and the theme CSS. */

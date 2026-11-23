@@ -3,6 +3,8 @@ import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import type { DB } from "@/db/connect";
 import { otpCodes, sessions, users, type User } from "@/db/schema";
 import { env } from "./env";
+import { nsKey } from "./cache";
+import { redisDel, redisEnabled, redisPipeline } from "./redis";
 
 export const SESSION_COOKIE = "vv_session";
 const SESSION_DAYS = 30;
@@ -14,15 +16,39 @@ const otpHash = (email: string, code: string) => sha256(`${env.authSecret()}:${e
 
 export class AuthError extends Error {}
 
+/** Signed-in shoppers send their session on every page: keep who-they-are in Redis for 2 minutes. */
+const SESSION_CACHE_SECONDS = 120;
+const sessionKey = (token: string) => nsKey(`sess:${sha256(token)}`);
+
 export async function userFromSessionToken(db: DB, token: string | undefined | null): Promise<User | null> {
   if (!token) return null;
+  if (redisEnabled()) {
+    const hit = (await redisPipeline([["GET", sessionKey(token)]]))?.[0]?.result;
+    if (typeof hit === "string") {
+      try {
+        const u = JSON.parse(hit) as User;
+        return { ...u, createdAt: new Date(u.createdAt) };
+      } catch {
+        /* reload below */
+      }
+    }
+  }
   const rows = await db
-    .select({ user: users })
+    .select({ user: users, expiresAt: sessions.expiresAt })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
     .where(and(eq(sessions.id, sha256(token)), gt(sessions.expiresAt, new Date())))
     .limit(1);
-  return rows[0]?.user ?? null;
+  const row = rows[0];
+  if (!row) return null;
+  const left = Math.floor((row.expiresAt.getTime() - Date.now()) / 1000);
+  if (redisEnabled() && left > 1) await redisPipeline([["SET", sessionKey(token), JSON.stringify(row.user), "EX", Math.min(SESSION_CACHE_SECONDS, left)]]);
+  return row.user;
+}
+
+/** After the user's own details change (or they log out), drop the cached copy for this session. */
+export async function forgetSession(token: string | undefined | null) {
+  if (token) await redisDel(sessionKey(token));
 }
 
 export async function createSession(db: DB, userId: number) {
@@ -33,7 +59,9 @@ export async function createSession(db: DB, userId: number) {
 }
 
 export async function destroySession(db: DB, token: string | undefined | null) {
-  if (token) await db.delete(sessions).where(eq(sessions.id, sha256(token)));
+  if (!token) return;
+  await db.delete(sessions).where(eq(sessions.id, sha256(token)));
+  await forgetSession(token);
 }
 
 export function sessionCookie(token: string, expiresAt: Date) {

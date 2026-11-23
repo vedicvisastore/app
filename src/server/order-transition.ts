@@ -95,7 +95,8 @@ export async function transitionOrder(db: DB, input: TransitionInput): Promise<T
 
   // Side effects that must only run after the transaction commits
   if (result.ok && result.changed) {
-    if (input.to === "paid" || input.to === "cancelled" || input.to === "refunded") clearCache();
+    // Stock, trending and coupon use changed: every cached store read must be rebuilt.
+    if (input.to === "paid" || input.to === "cancelled" || input.to === "refunded") await clearCache();
     if (input.to === "paid") await sendOrderConfirmation(db, input.orderId).catch((e) => console.warn("confirmation email failed", e));
     if (input.to === "shipped") await sendShippedEmail(db, input.orderId).catch((e) => console.warn("shipped email failed", e));
   }

@@ -1,9 +1,15 @@
 import { searchProducts } from "@/lib/search";
 import { discountState } from "@/lib/discount-status";
-import { cached } from "./cache";
-import { redisGetJson, redisSetJson } from "./redis";
+import { nsKey, secondsUntilNext, sharedCached } from "./cache";
+import { redisEnabled, redisPipeline } from "./redis";
 
-export const CATALOG_REDIS_KEY = "cache:store-products:v1";
+/** JSON (Redis) turns Dates into strings: turn the named fields back into Dates. */
+function dates<T>(o: T, keys: string[]): T {
+  const r = o as Record<string, unknown>;
+  for (const k of keys) if (typeof r[k] === "string") r[k] = new Date(r[k] as string);
+  return o;
+}
+const DISCOUNT_DATES = ["startsAt", "endsAt", "createdAt", "updatedAt"];
 import { and, desc, eq, gt, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
 import type { DB } from "@/db/connect";
 import { bundleItems, categories, discounts, orderItems, orders, products, type Discount, type Product } from "@/db/schema";
@@ -22,13 +28,30 @@ export function discountApplies(d: Pick<Discount, "productIds" | "categoryIds">,
   return d.productIds.includes(p.id) || (p.categoryId != null && d.categoryIds.includes(p.categoryId));
 }
 
-export function liveDiscounts(db: DB) {
-  return cached("live-discounts", 15_000, () => loadLiveDiscounts(db));
+/** Live sales/offers/coupons plus when the next one starts or ends (the cache must not outlive that moment). */
+function discountInfo(db: DB) {
+  return sharedCached(
+    "discounts",
+    {
+      memoryMs: 15_000,
+      ttl: (i) => secondsUntilNext([i.nextChange]),
+      revive: (raw) => {
+        const i = raw as { live: Discount[]; nextChange: string | null };
+        return { live: i.live.map((d) => dates(d, DISCOUNT_DATES)), nextChange: i.nextChange };
+      },
+    },
+    async () => {
+      const rows = await db.select().from(discounts).where(eq(discounts.active, true));
+      const now = Date.now();
+      const upcoming = rows.flatMap((d) => [d.startsAt, d.endsAt]).filter((t): t is Date => !!t && t.getTime() > now);
+      const next = upcoming.sort((a, b) => a.getTime() - b.getTime())[0];
+      return { live: rows.filter((d) => isDiscountLive(d)), nextChange: next ? next.toISOString() : null };
+    },
+  );
 }
 
-async function loadLiveDiscounts(db: DB) {
-  const rows = await db.select().from(discounts).where(eq(discounts.active, true));
-  return rows.filter((d) => isDiscountLive(d));
+export async function liveDiscounts(db: DB) {
+  return (await discountInfo(db)).live;
 }
 
 /** Best live "sale" for a product → selling price, plus the price to strike through. */
@@ -116,15 +139,27 @@ async function scores(db: DB) {
   return new Map(rows.map((r) => [r.productId!, r.score]));
 }
 
-/** Busiest read on the site: memory (20s) → Redis (60s, shared by every server) → database. */
-export function listStoreProducts(db: DB): Promise<CardProduct[]> {
-  return cached("store-products", 20_000, async () => {
-    const hit = await redisGetJson<CardProduct[]>(CATALOG_REDIS_KEY);
-    if (hit) return hit.map((p) => ({ ...p, createdAt: new Date(p.createdAt), launchAt: p.launchAt ? new Date(p.launchAt) : null }));
-    const fresh = await loadStoreProducts(db);
-    await redisSetJson(CATALOG_REDIS_KEY, fresh, 60);
-    return fresh;
-  });
+/**
+ * Busiest read on the site: memory (20 s) → Redis (up to 15 min, shared by every server) → database.
+ * Expires early when a product launches or a sale starts/ends; admin changes and paid orders clear it.
+ */
+export async function listStoreProducts(db: DB): Promise<CardProduct[]> {
+  const r = await sharedCached(
+    "store-products",
+    {
+      memoryMs: 20_000,
+      ttl: (r) => secondsUntilNext([r.nextChange, ...r.list.filter((p) => p.upcoming).map((p) => p.launchAt)]),
+      revive: (raw) => {
+        const r = raw as { list: CardProduct[]; nextChange: string | null };
+        return { list: r.list.map((p) => dates(p, ["createdAt", "launchAt"])), nextChange: r.nextChange };
+      },
+    },
+    async () => {
+      const [list, info] = await Promise.all([loadStoreProducts(db), discountInfo(db)]);
+      return { list, nextChange: info.nextChange };
+    },
+  );
+  return r.list;
 }
 
 async function loadStoreProducts(db: DB): Promise<CardProduct[]> {
@@ -225,7 +260,38 @@ export function filterProducts(all: CardProduct[], f: ShopQuery) {
   return list;
 }
 
+/** Product page data: cached like the catalogue (per product), so a popular page doesn't mean repeated queries. */
 export async function productDetail(db: DB, slug: string, countView = true) {
+  const p = await sharedCached(
+    `product:${slug}`,
+    {
+      memoryMs: 20_000,
+      ttl: (d) => (d ? secondsUntilNext([d.nextChange, d.upcoming ? d.launchAt : null]) : 900),
+      revive: (raw) => (raw ? dates(raw as NonNullable<ProductDetailCache>, ["launchAt"]) : null),
+    },
+    () => loadProductDetail(db, slug),
+  );
+  if (p && countView) await countProductView(db, p.id);
+  if (!p) return null;
+  const { nextChange: _n, ...detail } = p;
+  return detail;
+}
+
+/** Views are counted in Redis and written to the database once every 10 (no write per page view). */
+async function countProductView(db: DB, id: number) {
+  if (redisEnabled()) {
+    const r = await redisPipeline([["INCR", nsKey(`views:${id}`)], ["EXPIRE", nsKey(`views:${id}`), 30 * 86400]]);
+    const n = Number(r?.[0]?.result ?? 0);
+    if (n > 0 && n % 10 === 0) await db.update(products).set({ viewCount: sql`${products.viewCount} + 10` }).where(eq(products.id, id));
+    if (r) return;
+  }
+  // No Redis: sample instead (one write per ~10 views).
+  if (Math.random() < 0.1) await db.update(products).set({ viewCount: sql`${products.viewCount} + 10` }).where(eq(products.id, id));
+}
+
+type ProductDetailCache = Awaited<ReturnType<typeof loadProductDetail>>;
+
+async function loadProductDetail(db: DB, slug: string) {
   const [row] = await db
     .select({ p: products, catName: categories.name, catSlug: categories.slug })
     .from(products)
@@ -242,7 +308,8 @@ export async function productDetail(db: DB, slug: string, countView = true) {
           .innerJoin(products, eq(products.id, bundleItems.productId))
           .where(eq(bundleItems.bundleId, p.id))
       : [];
-  const sales = (await liveDiscounts(db)).filter((d) => d.kind === "sale");
+  const info = await discountInfo(db);
+  const sales = info.live.filter((d) => d.kind === "sale");
   const ep = effectivePrice(p, sales);
   const avail = (await availability(db, [p])).get(p.id) ?? null;
   const visible = components.filter((c) => c.visibility === "public");
@@ -255,8 +322,6 @@ export async function productDetail(db: DB, slug: string, countView = true) {
           .innerJoin(products, eq(products.id, bundleItems.bundleId))
           .where(and(eq(bundleItems.productId, p.id), eq(products.visibility, "public")))
       : [];
-  // Sampled view counting: one write per ~10 views keeps a traffic spike from becoming a write spike.
-  if (countView && Math.random() < 0.1) await db.update(products).set({ viewCount: sql`${products.viewCount} + 10` }).where(eq(products.id, p.id));
   return {
     id: p.id,
     name: p.name,
@@ -277,11 +342,12 @@ export async function productDetail(db: DB, slug: string, countView = true) {
     partOf,
     upcoming: isUpcoming(p),
     launchAt: p.launchAt,
+    nextChange: info.nextChange,
   };
 }
 
 export function storeCategories(db: DB) {
-  return cached("store-categories", 60_000, () => loadCategories(db));
+  return sharedCached("store-categories", { memoryMs: 60_000 }, () => loadCategories(db));
 }
 
 function loadCategories(db: DB) {

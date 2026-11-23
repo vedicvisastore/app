@@ -1,10 +1,11 @@
-import { cached, clearCache } from "./cache";
+import { clearCache, sharedCached } from "./cache";
 import type { DB } from "@/db/connect";
 import { settings } from "@/db/schema";
 import { DEFAULT_SETTINGS, type StoreSettings } from "@/lib/settings-defaults";
 
 export function getSettings(db: DB): Promise<StoreSettings> {
-  return cached("settings", 30_000, () => loadSettings(db));
+  // Read on every page (layout): memory 30 s, then Redis until an admin changes something.
+  return sharedCached("settings", { memoryMs: 30_000 }, () => loadSettings(db));
 }
 
 async function loadSettings(db: DB): Promise<StoreSettings> {
@@ -27,5 +28,5 @@ export async function saveSettings(db: DB, patch: Partial<StoreSettings>) {
     if (!(key in DEFAULT_SETTINGS) || value === undefined) continue;
     await db.insert(settings).values({ key, value }).onConflictDoUpdate({ target: settings.key, set: { value } });
   }
-  clearCache();
+  await clearCache();
 }

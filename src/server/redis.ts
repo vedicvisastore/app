@@ -1,8 +1,9 @@
 /**
- * Upstash Redis over its REST API (works on Cloudflare Workers, no TCP needed).
- * The free tier has a monthly command budget, so Redis is used only where it matters:
- *   - rate limits on login codes and checkout (must be shared across all server instances)
- *   - a second-level cache for the product catalogue (the busiest database read)
+ * Upstash Redis over its REST API (works on Cloudflare Workers, no TCP needed). Used for:
+ *   - shared rate limits on login codes, coupon tries and checkout (rate-limit.ts)
+ *   - the shared store cache: settings, site text/pictures, catalogue, categories, custom pages, live
+ *     discounts and product pages, kept until an admin change or a scheduled change (cache.ts)
+ *   - signed-in sessions (2 min), pincode lookups (30 days), product view counters
  * Everything degrades gracefully: without Redis, limits and caches fall back to per-instance memory.
  */
 const URL_ = () => process.env.UPSTASH_REDIS_REST_URL?.replace(/\/$/, "") ?? "";

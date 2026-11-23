@@ -57,6 +57,6 @@ export const protectedProcedure = publicProcedure.use(({ ctx, next }) => {
 export const adminProcedure = protectedProcedure.use(async ({ ctx, next, type }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admins only." });
   const res = await next({ ctx });
-  if (type === "mutation") clearCache();
+  if (type === "mutation") await clearCache();
   return res;
 });

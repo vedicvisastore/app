@@ -2,7 +2,9 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { addresses, orderEvents, orderItems, orders, users } from "@/db/schema";
-import { clearSessionCookie, createSession, destroySession, requestOtp, sessionCookie, verifyOtp } from "../auth";
+import { clearSessionCookie, createSession, destroySession, forgetSession, requestOtp, sessionCookie, verifyOtp } from "../auth";
+import { nsKey } from "../cache";
+import { redisPipeline } from "../redis";
 import { filterProducts, listStoreProducts, liveDiscounts, liveGroups, productDetail, storeCategories } from "../catalog";
 import { festivalPage, liveFestivals } from "../festivals";
 import { env } from "../env";
@@ -69,6 +71,7 @@ export const authRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       await ctx.db.update(users).set({ name: input.name, phone: input.phone || null }).where(eq(users.id, ctx.user.id));
+      await forgetSession(ctx.sessionToken);
       return { ok: true };
     }),
 });
@@ -136,12 +139,23 @@ export const cartRouter = router({
 export const pincodeRouter = router({
   lookup: publicProcedure.input(z.object({ pincode: z.string().regex(/^[1-9]\d{5}$/) })).query(async ({ ctx, input }) => {
     await enforce(LIMITS.pincodeIp, ctx.ip);
+    // Pincodes don't change: answers from India Post's lookup are kept in Redis for 30 days.
+    const key = nsKey(`pin:${input.pincode}`);
+    const hit = (await redisPipeline([["GET", key]]))?.[0]?.result;
+    if (typeof hit === "string") {
+      try {
+        return JSON.parse(hit) as { found: true; city: string; state: string; areas: string[] } | { found: false };
+      } catch {
+        /* look it up again */
+      }
+    }
     try {
       const res = await fetch(`https://api.postalpincode.in/pincode/${input.pincode}`, { signal: AbortSignal.timeout(4000) });
       const data = (await res.json()) as { Status: string; PostOffice: { District: string; State: string; Name: string; DeliveryStatus: string }[] | null }[];
       const po = data[0]?.PostOffice;
-      if (data[0]?.Status !== "Success" || !po?.length) return { found: false as const };
-      return { found: true as const, city: po[0].District, state: po[0].State, areas: po.map((p) => p.Name).slice(0, 12) };
+      const answer = data[0]?.Status !== "Success" || !po?.length ? { found: false as const } : { found: true as const, city: po[0].District, state: po[0].State, areas: po.map((p) => p.Name).slice(0, 12) };
+      await redisPipeline([["SET", key, JSON.stringify(answer), "EX", answer.found ? 30 * 86400 : 86400]]);
+      return answer;
     } catch {
       return { found: false as const, offline: true };
     }
@@ -258,6 +272,7 @@ export const checkoutRouter = router({
           .update(users)
           .set({ phone: ctx.user.phone ?? input.address.phone, name: ctx.user.name ?? input.address.name })
           .where(eq(users.id, ctx.user.id));
+        await forgetSession(ctx.sessionToken);
       }
 
       const order = await createPendingOrder(ctx.db, {
