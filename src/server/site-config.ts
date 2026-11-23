@@ -66,14 +66,20 @@ async function readRaw(): Promise<SiteConfig> {
     const { readFile } = await import("node:fs/promises");
     return { ...EMPTY, ...JSON.parse(await readFile(await localPath(), "utf8")) };
   } catch (e) {
-    if (!String(e).includes("ENOENT")) console.warn("site config read failed, using defaults:", e);
-    return EMPTY;
+    if (String(e).includes("ENOENT")) return EMPTY; // dev: nothing saved yet
+    // A failed read must not be cached as "nothing saved" (that would hide the owner's text for 15 minutes,
+    // and an admin save on top of it would wipe the theme and pictures). Let it fail; callers decide.
+    console.warn("site config read failed:", e);
+    throw e;
   }
 }
 
+/** Last copy read successfully on this server: used by the store if storage hiccups. */
+let lastGood: SiteConfig | null = null;
+
 export function getSiteConfig(): Promise<SiteConfig> {
   // Saved text, theme and pictures: memory 10 s, then Redis until the next save (which clears both).
-  return sharedCached("site-config", { memoryMs: 10_000 }, readRaw);
+  return sharedCached("site-config", { memoryMs: 10_000 }, readRaw).then((c) => (lastGood = c));
 }
 
 export async function saveSiteConfig(next: SiteConfig) {
@@ -97,7 +103,7 @@ export async function saveSiteConfig(next: SiteConfig) {
 
 /** What every page needs: merged copy and the theme CSS. */
 export async function getSite(): Promise<{ content: SiteContent; images: SiteImages; themeKey: string; themeCss: string; previewing: boolean; editing: boolean }> {
-  const [cfg, { draft, edit }] = await Promise.all([getSiteConfig().catch(() => EMPTY), import("./content-preview").then((m) => m.requestAdminView())]);
+  const [cfg, { draft, edit }] = await Promise.all([getSiteConfig().catch(() => lastGood ?? EMPTY), import("./content-preview").then((m) => m.requestAdminView())]);
   const key = cfg.theme === "custom" || THEMES.some((t) => t.key === cfg.theme) ? cfg.theme : "vrindavan";
   // An admin previewing unsaved text in Admin → Store text sees the draft instead of the saved text.
   const text = draft ?? cfg.content;
