@@ -44,10 +44,12 @@ export async function presignUpload(filename: string, contentType: string) {
   const client = new AwsClient({ accessKeyId: r2.accessKeyId, secretAccessKey: r2.secretAccessKey, service: "s3", region: "auto" });
   const url = new URL(`https://${r2.accountId}.r2.cloudflarestorage.com/${r2.bucket}/${key}`);
   url.searchParams.set("X-Amz-Expires", "600");
-  const signed = await client.sign(new Request(url, { method: "PUT", headers: { "Content-Type": contentType } }), {
+  // Every upload gets a new random name and is never overwritten, so the CDN and browsers may keep it for a year.
+  const headers = { "Content-Type": contentType, "Cache-Control": "public, max-age=31536000, immutable" };
+  const signed = await client.sign(new Request(url, { method: "PUT", headers }), {
     aws: { signQuery: true },
   });
-  return { uploadUrl: signed.url, publicUrl: `${r2.publicUrl}/${key}`, headers: { "Content-Type": contentType } };
+  return { uploadUrl: signed.url, publicUrl: `${r2.publicUrl}/${key}`, headers };
 }
 
 export async function deleteMedia(publicUrl: string) {
