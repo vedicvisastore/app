@@ -327,8 +327,8 @@ function Downloads() {
       </Card>
       <Card className="p-5">
         <LineChart className="mb-2 size-7 text-royal" aria-hidden />
-        <h2 className="font-sans text-lg font-bold">Stock and sales report</h2>
-        <p className="mt-1 text-sm text-ink-soft">Sales, revenue, cost and profit by month and by year; stock received, sent out, returned and left for every product; the full stock ledger, orders and order lines. Totals are live Excel formulas.</p>
+        <h2 className="font-sans text-lg font-bold">Stock, sales and analytics report</h2>
+        <p className="mt-1 text-sm text-ink-soft">A summary, then sales and profit by month and year; analytics for every product, category, state, city, customer, coupon, day, weekday and hour; stock in and out for every product (whole period and by month); the stock ledger, orders and order lines. Totals and shares are live Excel formulas.</p>
         <label className="mt-4 block text-sm font-bold" htmlFor="period">
           Period
         </label>

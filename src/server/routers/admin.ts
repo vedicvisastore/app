@@ -902,7 +902,11 @@ export const adminRouter = router({
     const to = new Date(input.to);
     const counted = ["paid", "packed", "shipped", "delivered"] as const;
     const [prods, before, moves, ords] = await Promise.all([
-      ctx.db.select({ id: products.id, sku: products.sku, name: products.name, kind: products.kind, cost: products.cost, price: products.price, visibility: products.visibility, stock: products.stock }).from(products).orderBy(products.kind, products.name),
+      ctx.db
+        .select({ id: products.id, sku: products.sku, name: products.name, kind: products.kind, cost: products.cost, price: products.price, visibility: products.visibility, stock: products.stock, views: products.viewCount, category: categories.name, group: products.bundleGroup })
+        .from(products)
+        .leftJoin(categories, eq(categories.id, products.categoryId))
+        .orderBy(products.kind, products.name),
       // Stock at the start: each product's balance after its last movement before the period.
       ctx.db.execute(sql`select distinct on (product_id) product_id as "productId", balance_after as "balance" from stock_movements where created_at < ${from.toISOString()} order by product_id, created_at desc, id desc`),
       ctx.db
@@ -917,7 +921,10 @@ export const adminRouter = router({
         .where(and(isNotNull(orders.paidAt), gte(orders.paidAt, from), sql`${orders.paidAt} < ${to.toISOString()}`))
         .orderBy(orders.paidAt),
     ]);
-    const lines = ords.length ? await ctx.db.select().from(orderItems).where(inArray(orderItems.orderId, ords.map((o) => o.id))) : [];
+    const [lines, contents] = await Promise.all([
+      ords.length ? ctx.db.select().from(orderItems).where(inArray(orderItems.orderId, ords.map((o) => o.id))) : Promise.resolve([]),
+      ctx.db.select({ bundleId: bundleItems.bundleId, productId: bundleItems.productId, qty: bundleItems.qty }).from(bundleItems),
+    ]);
     const beforeRows = ((before as unknown as { rows?: { productId: number; balance: number }[] }).rows ?? (before as unknown as { productId: number; balance: number }[])) as { productId: number; balance: number }[];
     return {
       from: from.toISOString(),
@@ -940,7 +947,10 @@ export const adminRouter = router({
         shipping: o.shippingFee,
         total: o.total,
         coupon: o.couponCode,
+        offers: o.discountLines.map((d) => ({ label: d.label, amount: d.amount, code: d.code ?? null })),
+        userId: o.userId,
       })),
+      contents,
       lines: lines.map((l) => ({ orderId: l.orderId, productId: l.productId, sku: l.sku, name: l.name, qty: l.qty, unitPrice: l.unitPrice, lineTotal: l.lineTotal })),
     };
   }),
