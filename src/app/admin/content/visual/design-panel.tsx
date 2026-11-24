@@ -291,11 +291,15 @@ function FontSelect({ value, onChange, placeholder }: { value: FontKey | null; o
       {placeholder && <option value="">{placeholder}</option>}
       {groups.map((g) => (
         <optgroup key={g.label} label={g.label}>
-          {g.keys.map((k) => (
-            <option key={k} value={k}>
-              {FONTS[k].label}
-            </option>
-          ))}
+          {g.keys.map((k) => {
+            const f: { label: string; stack: string; hi?: string } = FONTS[k];
+            // Fonts with Hindi letters show their name in Hindi too; each option is drawn in its own font where the browser allows.
+            return (
+              <option key={k} value={k} style={{ fontFamily: f.stack.replace("var(--font-rozha), ", "") }}>
+                {f.hi ? `${f.label} · ${f.hi}` : f.label}
+              </option>
+            );
+          })}
         </optgroup>
       ))}
     </select>
