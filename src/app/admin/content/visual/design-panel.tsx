@@ -6,6 +6,8 @@ import {
   BLOCKS,
   COLOR_ROLES,
   FONT_ROLES,
+  FONT_KINDS,
+  FONT_LANGS,
   FONTS,
   LOOK,
   type BlockKey,
@@ -14,6 +16,7 @@ import {
   type ColorToken,
   type Design,
   type FontKey,
+  type FontKind,
   type LookKey,
 } from "@/lib/design";
 import { cn } from "@/lib/utils";
@@ -95,7 +98,7 @@ export function DesignSection({ part, design, setDesign, tokens, focus, onPart }
     return (
       <div className="space-y-6">
         <div className="space-y-4">
-          <p className="text-xs text-ink-soft">The two fonts of the whole store. Fonts marked हिन्दी also cover Devanagari.</p>
+          <p className="text-xs text-ink-soft">The two fonts of the whole store. The list is grouped by language (fonts with Hindi letters first), then by style.</p>
           {FONT_ROLES.map((r) => {
             const cur = design.fonts?.[r.role] ?? (r.fallback as FontKey);
             return (
@@ -277,14 +280,23 @@ export function BlockPanel({ block, design, setDesign, onClose }: { block: Picke
 }
 
 function FontSelect({ value, onChange, placeholder }: { value: FontKey | null; onChange: (v: FontKey | null) => void; placeholder?: string }) {
+  // Grouped by language first (fonts with Hindi letters, then English-only), then by style.
+  const groups = (Object.keys(FONT_LANGS) as (keyof typeof FONT_LANGS)[]).flatMap((lang) =>
+    (Object.keys(FONT_KINDS) as FontKind[])
+      .map((kind) => ({ label: `${FONT_LANGS[lang]} · ${FONT_KINDS[kind]}`, keys: FONT_KEYS.filter((k) => FONTS[k].lang === lang && FONTS[k].kind === kind) }))
+      .filter((g) => g.keys.length),
+  );
   return (
     <select value={value ?? ""} onChange={(e) => onChange((e.target.value || null) as FontKey | null)} className="field h-10 !py-1 text-base sm:text-sm">
       {placeholder && <option value="">{placeholder}</option>}
-      {FONT_KEYS.map((k) => (
-        <option key={k} value={k}>
-          {FONTS[k].label}
-          {"devanagari" in FONTS[k] && FONTS[k].devanagari ? " · हिन्दी" : ""}
-        </option>
+      {groups.map((g) => (
+        <optgroup key={g.label} label={g.label}>
+          {g.keys.map((k) => (
+            <option key={k} value={k}>
+              {FONTS[k].label}
+            </option>
+          ))}
+        </optgroup>
       ))}
     </select>
   );
