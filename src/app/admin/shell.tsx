@@ -62,7 +62,7 @@ export function AdminShell({ email, children }: { email: string; children: React
     <nav className="flex flex-1 flex-col gap-4" aria-label="Admin">
       {NAV.map((g, gi) => (
         <div key={g.title ?? gi}>
-          {g.title && <p className="mb-1 px-3 text-[0.7rem] font-bold tracking-[0.12em] text-ink-mute uppercase">{g.title}</p>}
+          {g.title && <p className="mb-1 px-3 text-[0.68rem] font-semibold tracking-[0.08em] text-ink-mute uppercase">{g.title}</p>}
           <ul className="space-y-0.5">
             {g.items.map((n) => {
               const active = n.exact ? pathname === n.href : pathname.startsWith(n.href);
@@ -73,10 +73,10 @@ export function AdminShell({ email, children }: { email: string; children: React
                     aria-current={active ? "page" : undefined}
                     className={cn(
                       "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[0.93rem] transition-colors",
-                      active ? "bg-paper font-bold text-royal shadow-lift" : "text-ink-soft hover:bg-paper/60 hover:text-ink",
+                      active ? "bg-sky font-semibold text-ink" : "text-ink-soft hover:bg-sky hover:text-ink",
                     )}
                   >
-                    {active && <span className="absolute inset-y-2 left-0 w-1 rounded-full bg-gold" aria-hidden />}
+                    {active && <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-royal" aria-hidden />}
                     <n.icon className="size-[18px] shrink-0" aria-hidden />
                     {n.label}
                   </Link>
@@ -97,11 +97,11 @@ export function AdminShell({ email, children }: { email: string; children: React
 
   return (
     <ToastProvider>
-      <div className="min-h-dvh bg-paper lg:grid lg:grid-cols-[248px_1fr]">
-        <aside className="sticky top-0 hidden h-dvh flex-col gap-5 overflow-y-auto bg-sky p-4 lg:flex">
+      <div className="min-h-dvh bg-paper-2 lg:grid lg:grid-cols-[248px_1fr]">
+        <aside className="sticky top-0 hidden h-dvh flex-col gap-5 overflow-y-auto border-r border-line bg-paper p-4 lg:flex">
           <Link href="/admin" className="flex items-center gap-2 px-2 pt-2">
             <Image src="/brand/logo.png" alt="VedicVisa" width={900} height={591} className="h-12 w-auto" />
-            <span className="rounded-full bg-haldi-soft px-2 py-0.5 text-[11px] font-bold text-gold-ink">Admin</span>
+            <span className="rounded-md bg-sky px-1.5 py-0.5 text-[11px] font-semibold text-ink-soft">Admin</span>
           </Link>
           {nav}
         </aside>
@@ -115,7 +115,7 @@ export function AdminShell({ email, children }: { email: string; children: React
         {open && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <div className="absolute inset-0 bg-ink/30" onClick={() => setOpen(false)} />
-            <aside className="absolute inset-y-0 left-0 flex w-72 flex-col gap-5 overflow-y-auto bg-sky p-4">
+            <aside className="absolute inset-y-0 left-0 flex w-72 flex-col gap-5 overflow-y-auto bg-paper p-4">
               <button onClick={() => setOpen(false)} className="grid size-10 place-items-center self-end rounded-full hover:bg-paper" aria-label="Close menu">
                 <X className="size-5" />
               </button>

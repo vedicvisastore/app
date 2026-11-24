@@ -6,8 +6,8 @@ export function PageHeader({ title, description, actions }: { title: string; des
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="text-4xl">{title}</h1>
-        {description && <p className="mt-1 max-w-2xl text-ink-soft">{description}</p>}
+        <h1 className="text-2xl leading-tight sm:text-[1.75rem]">{title}</h1>
+        {description && <p className="mt-1.5 max-w-2xl text-sm text-ink-soft">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
@@ -15,14 +15,14 @@ export function PageHeader({ title, description, actions }: { title: string; des
 }
 
 export function Card({ className, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-2xl border border-line bg-paper", className)} {...rest} />;
+  return <div className={cn("rounded-xl border border-line bg-paper shadow-[0_1px_2px_rgb(16_24_40/0.04)]", className)} {...rest} />;
 }
 
 export function Stat({ label, value, hint, tone }: { label: string; value: React.ReactNode; hint?: string; tone?: "royal" | "mor" | "gulal" | "haldi" }) {
   return (
     <Card className="p-5">
       <p className="text-sm text-ink-soft">{label}</p>
-      <p className={cn("mt-1 text-3xl font-bold tabular-nums", tone === "mor" && "text-mor", tone === "gulal" && "text-gulal", tone === "royal" && "text-royal", tone === "haldi" && "text-gold-ink")}>{value}</p>
+      <p className={cn("mt-1 text-2xl font-semibold tracking-tight tabular-nums", tone === "mor" && "text-mor", tone === "gulal" && "text-gulal", tone === "royal" && "text-royal", tone === "haldi" && "text-gold-ink")}>{value}</p>
       {hint && <p className="mt-0.5 text-xs text-ink-mute">{hint}</p>}
     </Card>
   );

@@ -1,0 +1,61 @@
+/*
+ * The admin's own look: plain and professional, independent of the store's theme and design.
+ * One neutral sans font (Inter) everywhere, greys for surfaces, one blue accent, near-black main buttons.
+ * Custom properties are set on .admin-ui, so every token utility inside the admin (bg-paper, text-ink, border-line…)
+ * picks these up instead of the store's colours. Aliases are listed too: they are resolved where defined.
+ */
+.admin-ui {
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-body: var(--font-display);
+  --font-sans: var(--font-display);
+  --display-weight: 650;
+  --tracking-display: -0.015em;
+
+  --color-paper: #ffffff;
+  --color-paper-2: #f7f8fa;
+  --color-paper-3: #eceef2;
+  --color-sky: #f3f4f6;
+  --color-sky-deep: #e5e7eb;
+  --color-ink: #111827;
+  --color-ink-2: #4b5563;
+  --color-ink-soft: #4b5563;
+  --color-muted: #6b7280;
+  --color-ink-mute: #6b7280;
+  --color-rule: #e5e7eb;
+  --color-line: #e5e7eb;
+  --color-line-strong: #d1d5db;
+  --color-focus: #2563eb;
+
+  --color-royal: #2563eb;
+  --color-royal-deep: #1d4ed8;
+  --color-shyam: #111827;
+  --color-on-shyam: #ffffff;
+  --color-gold: #f59e0b;
+  --color-gold-soft: #fffbeb;
+  --color-gold-ink: #b45309;
+  --color-haldi: #f59e0b;
+  --color-haldi-soft: #fffbeb;
+  --color-haldi-ink: #b45309;
+  --color-gulal: #dc2626;
+  --color-gulal-soft: #fef2f2;
+  --color-mor: #059669;
+  --color-mor-soft: #ecfdf5;
+  --color-yamuna: #0369a1;
+  --color-yamuna-soft: #f0f9ff;
+
+  --shadow-lift: 0 1px 2px rgb(16 24 40 / 0.06), 0 1px 3px rgb(16 24 40 / 0.08);
+  --shadow-float: 0 12px 32px -8px rgb(16 24 40 / 0.18), 0 2px 6px rgb(16 24 40 / 0.06);
+  --radius-button: 10px;
+
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Main buttons: near-black with white text (the store's gold stays in the store). */
+.admin-ui .vv-btn-primary { background-color: #111827; color: #fff; }
+.admin-ui .vv-btn-primary:hover:not(:disabled) { background-color: #1f2937; }
+.admin-ui .vv-btn-outline { border-color: var(--color-line-strong); color: var(--color-ink); }
+.admin-ui .vv-btn-outline:hover:not(:disabled) { border-color: var(--color-ink-2); background-color: var(--color-paper-2); }
+.admin-ui .field { border-radius: 10px; }
+.admin-ui :focus-visible { outline-color: var(--color-focus); }
