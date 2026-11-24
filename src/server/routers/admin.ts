@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, count, desc, eq, gte, ilike, inArray, isNotNull, notInArray, or, sql, sum } from "drizzle-orm";
 import { z } from "zod";
 import {
+  addresses,
   bundleItems,
   categories,
   discounts,
@@ -29,6 +30,7 @@ import { env } from "../env";
 import { nextStates } from "@/lib/order-machine";
 import { CONTENT_KEYS } from "@/content/defaults";
 import { DEFAULT_IMAGES, isImageKey, safeImageSrc } from "@/content/images";
+import { cleanDesign } from "@/lib/design";
 import { THEMES } from "@/lib/themes";
 import { getSiteConfig, saveSiteConfig, siteConfigStorage } from "../site-config";
 import { transitionOrder } from "../order-transition";
@@ -273,7 +275,7 @@ export const adminRouter = router({
   // ── Look and copy (saved as one JSON file in R2, not the database) ──
   siteConfig: adminProcedure.query(async () => {
     const cfg = await getSiteConfig();
-    return { theme: cfg.theme, customTheme: cfg.customTheme, content: cfg.content, images: cfg.images ?? {}, updatedAt: cfg.updatedAt ?? null, storage: siteConfigStorage() };
+    return { theme: cfg.theme, customTheme: cfg.customTheme, content: cfg.content, images: cfg.images ?? {}, design: cfg.design ?? {}, updatedAt: cfg.updatedAt ?? null, storage: siteConfigStorage() };
   }),
   saveTheme: adminProcedure
     .input(
@@ -285,9 +287,17 @@ export const adminRouter = router({
     .mutation(async ({ input }) => {
       if (input.theme !== "custom" && !THEMES.some((t) => t.key === input.theme)) throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown theme." });
       const cfg = await getSiteConfig();
-      await saveSiteConfig({ ...cfg, theme: input.theme, customTheme: input.customTheme ?? cfg.customTheme });
+      // A new theme replaces the colour tweaks made in the visual editor (fonts, look and block styles stay).
+      const design = cfg.design ? { ...cfg.design, colors: undefined } : undefined;
+      await saveSiteConfig({ ...cfg, theme: input.theme, customTheme: input.customTheme ?? cfg.customTheme, design });
       return { ok: true };
     }),
+  /** Design from the visual editor: colours, fonts, look and per-block styles (validated in cleanDesign). */
+  saveDesign: adminProcedure.input(z.object({ design: z.record(z.string(), z.unknown()) })).mutation(async ({ input }) => {
+    const cfg = await getSiteConfig();
+    await saveSiteConfig({ ...cfg, design: cleanDesign(input.design) });
+    return { ok: true };
+  }),
   /** Live preview: unsaved text goes into a short-lived cookie that only admins' page views honour. */
   // protectedProcedure + inline admin check: adminProcedure would clear the catalogue cache on every keystroke.
   previewContent: protectedProcedure.input(z.object({ content: z.record(z.string(), z.string().max(600)) })).mutation(({ ctx, input }) => {
@@ -434,6 +444,78 @@ export const adminRouter = router({
         : [];
       return list.map((o) => ({ ...o, items: items.filter((i) => i.orderId === o.id) }));
     }),
+  // ── Customers ──────────────────────────────────────────
+  /** Everyone who has an account or has ordered, one row per email: orders, spend, open orders, last seen. */
+  customers: adminProcedure.input(z.object({ q: z.string().max(80).optional() })).query(async ({ ctx, input }) => {
+    const live = sql`${orders.status} in ('paid','packed','shipped','delivered')`;
+    const [agg, accounts] = await Promise.all([
+      ctx.db
+        .select({
+          email: sql<string>`lower(${orders.email})`,
+          orders: sql<number>`count(*) filter (where ${orders.status} <> 'pending_payment')`.mapWith(Number),
+          open: sql<number>`count(*) filter (where ${orders.status} in ('paid','packed','shipped'))`.mapWith(Number),
+          spent: sql<number>`coalesce(sum(${orders.total}) filter (where ${live}), 0)`.mapWith(Number),
+          lastOrder: sql<Date | null>`max(${orders.createdAt}) filter (where ${orders.status} <> 'pending_payment')`,
+          name: sql<string | null>`(array_agg(${orders.shippingAddress}->>'name' order by ${orders.createdAt} desc))[1]`,
+          phone: sql<string | null>`(array_agg(${orders.shippingAddress}->>'phone' order by ${orders.createdAt} desc))[1]`,
+          city: sql<string | null>`(array_agg(${orders.shippingAddress}->>'city' order by ${orders.createdAt} desc))[1]`,
+          state: sql<string | null>`(array_agg(${orders.shippingAddress}->>'state' order by ${orders.createdAt} desc))[1]`,
+        })
+        .from(orders)
+        .groupBy(sql`lower(${orders.email})`),
+      ctx.db.select({ id: users.id, email: users.email, name: users.name, phone: users.phone, role: users.role, createdAt: users.createdAt }).from(users),
+    ]);
+    const byEmail = new Map<string, { email: string; name: string | null; phone: string | null; city: string | null; state: string | null; orders: number; open: number; spent: number; lastOrder: Date | null; joined: Date | null; account: boolean; admin: boolean }>();
+    for (const a of agg) byEmail.set(a.email, { ...a, lastOrder: a.lastOrder ? new Date(a.lastOrder) : null, joined: null, account: false, admin: false });
+    for (const u of accounts) {
+      const key = u.email.toLowerCase();
+      const row = byEmail.get(key) ?? { email: key, name: null, phone: null, city: null, state: null, orders: 0, open: 0, spent: 0, lastOrder: null, joined: null, account: false, admin: false };
+      byEmail.set(key, { ...row, name: u.name ?? row.name, phone: u.phone ?? row.phone, joined: u.createdAt, account: true, admin: u.role === "admin" });
+    }
+    const t = input.q?.trim().toLowerCase();
+    return [...byEmail.values()]
+      .filter((c) => !t || `${c.email} ${c.name ?? ""} ${c.phone ?? ""} ${c.city ?? ""}`.toLowerCase().includes(t))
+      .sort((a, b) => (b.lastOrder?.getTime() ?? b.joined?.getTime() ?? 0) - (a.lastOrder?.getTime() ?? a.joined?.getTime() ?? 0))
+      .slice(0, 500);
+  }),
+  /** One customer: account details, saved addresses, every order (open first) and totals. */
+  customer: adminProcedure.input(z.object({ email: z.string().max(200) })).query(async ({ ctx, input }) => {
+    const email = input.email.trim().toLowerCase();
+    const [user] = await ctx.db.select().from(users).where(sql`lower(${users.email}) = ${email}`).limit(1);
+    const [list, saved] = await Promise.all([
+      ctx.db
+        .select()
+        .from(orders)
+        .where(user ? or(sql`lower(${orders.email}) = ${email}`, eq(orders.userId, user.id)) : sql`lower(${orders.email}) = ${email}`)
+        .orderBy(desc(orders.createdAt))
+        .limit(200),
+      user ? ctx.db.select().from(addresses).where(eq(addresses.userId, user.id)).orderBy(desc(addresses.isDefault)) : Promise.resolve([]),
+    ]);
+    if (!user && !list.length) throw new TRPCError({ code: "NOT_FOUND", message: "No customer with that email." });
+    const items = list.length ? await ctx.db.select({ orderId: orderItems.orderId, qty: orderItems.qty, name: orderItems.name }).from(orderItems).where(inArray(orderItems.orderId, list.map((o) => o.id))) : [];
+    const withItems = list.map((o) => ({ ...o, items: items.filter((i) => i.orderId === o.id) }));
+    const counted = withItems.filter((o) => ["paid", "packed", "shipped", "delivered"].includes(o.status));
+    const spent = counted.reduce((s, o) => s + o.total, 0);
+    const latest = list.find((o) => o.status !== "pending_payment")?.shippingAddress ?? list[0]?.shippingAddress ?? null;
+    return {
+      email,
+      account: user ? { id: user.id, name: user.name, phone: user.phone, role: user.role, joined: user.createdAt } : null,
+      name: user?.name ?? latest?.name ?? null,
+      phone: user?.phone ?? latest?.phone ?? null,
+      latestAddress: latest,
+      addresses: saved,
+      stats: {
+        orders: withItems.filter((o) => o.status !== "pending_payment").length,
+        spent,
+        average: counted.length ? Math.round(spent / counted.length) : 0,
+        firstOrder: counted.at(-1)?.createdAt ?? null,
+        lastOrder: counted[0]?.createdAt ?? null,
+      },
+      open: withItems.filter((o) => ["paid", "packed", "shipped"].includes(o.status)),
+      past: withItems.filter((o) => !["paid", "packed", "shipped"].includes(o.status)),
+    };
+  }),
+
   order: adminProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
     const [o] = await ctx.db.select().from(orders).where(eq(orders.id, input.id)).limit(1);
     if (!o) throw new TRPCError({ code: "NOT_FOUND" });
@@ -451,7 +533,15 @@ export const adminRouter = router({
       if (!comps.length) pick.set(it.name, (pick.get(it.name) ?? 0) + it.qty);
       for (const c of comps) pick.set(c.name, (pick.get(c.name) ?? 0) + c.qty * it.qty);
     }
-    return { ...o, items, events, customer: customer[0] ?? null, pickList: [...pick].map(([name, qty]) => ({ name, qty })), allowedNext: nextStates(o.status, "admin") };
+    // The same customer's other orders (by email or account), newest first, for context while packing.
+    const others = await ctx.db
+      .select({ id: orders.id, number: orders.number, status: orders.status, total: orders.total, createdAt: orders.createdAt })
+      .from(orders)
+      .where(and(sql`${orders.id} <> ${o.id}`, o.userId ? or(sql`lower(${orders.email}) = lower(${o.email})`, eq(orders.userId, o.userId)) : sql`lower(${orders.email}) = lower(${o.email})`, sql`${orders.status} <> 'pending_payment'`))
+      .orderBy(desc(orders.createdAt))
+      .limit(50);
+    const otherSpent = others.filter((x) => ["paid", "packed", "shipped", "delivered"].includes(x.status)).reduce((sum, x) => sum + x.total, 0);
+    return { ...o, items, events, customer: customer[0] ?? null, otherOrders: others.slice(0, 8), customerTotals: { orders: others.length + 1, spent: otherSpent + (["paid", "packed", "shipped", "delivered"].includes(o.status) ? o.total : 0) }, pickList: [...pick].map(([name, qty]) => ({ name, qty })), allowedNext: nextStates(o.status, "admin") };
   }),
   updateOrder: adminProcedure
     .input(

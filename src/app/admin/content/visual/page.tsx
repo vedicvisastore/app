@@ -1,12 +1,14 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, ImageUp, Monitor, MousePointerClick, Pencil, RotateCcw, Search, Smartphone, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, ImageUp, Monitor, MousePointerClick, Paintbrush, Palette, Pencil, RotateCcw, Search, Smartphone, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, PageLoader, Spinner } from "@/components/ui";
 import { CONTENT_GROUPS } from "@/content/defaults";
 import { DEFAULT_IMAGES, IMAGE_SLOTS, isImageKey, type ImageKey } from "@/content/images";
 import { useUploadFile } from "../../_upload";
+import { DesignPanel, BlockPanel, ALL_FONTS_HREF, type PickedBlock } from "./design-panel";
+import { cleanDesign, designCss, designFontsHref, type Design } from "@/lib/design";
 import { useTRPC } from "@/lib/trpc/client";
 import { cn, storeHref } from "@/lib/utils";
 import { useToast } from "../../_ui";
@@ -62,14 +64,14 @@ export default function VisualEditorPage() {
   const box = products.data?.find((p) => p.kind === "bundle");
   const item = products.data?.find((p) => p.kind === "single");
   const pages = [...PAGES.slice(0, 2), ...(box ? [{ path: `/p/${box.slug}`, label: "A box page" }] : []), ...(item ? [{ path: `/p/${item.slug}`, label: "An item page" }] : []), ...PAGES.slice(2)];
-  return <Editor saved={data.content ?? {}} savedImages={data.images ?? {}} pages={pages} />;
+  return <Editor saved={data.content ?? {}} savedImages={data.images ?? {}} savedDesign={(data.design ?? {}) as Design} pages={pages} />;
 }
 
 const IMAGE_KEYS = Object.keys(IMAGE_SLOTS) as ImageKey[];
 /** Saved picture overrides → full map (missing = the original picture). */
 const fullImages = (over: Record<string, string>) => Object.fromEntries(IMAGE_KEYS.map((k) => [k, over[k] || DEFAULT_IMAGES[k]])) as Record<ImageKey, string>;
 
-function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; savedImages: Record<string, string>; pages: { path: string; label: string }[] }) {
+function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<string, string>; savedImages: Record<string, string>; savedDesign: Design; pages: { path: string; label: string }[] }) {
   const trpc = useTRPC();
   const qc = useQueryClient();
   const toast = useToast();
@@ -80,7 +82,15 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
   const [shownPath, setShownPath] = useState("/");
   const [frameKey, setFrameKey] = useState(0);
   const [device, setDevice] = useState<"phone" | "desktop">("phone");
-  const [mode, setMode] = useState<"edit" | "browse">("edit");
+  const [mode, setMode] = useState<"edit" | "style" | "browse">("edit");
+  // Design (colours, fonts, look, block styles): what is saved and what the owner is trying.
+  const [design, setDesign] = useState<Design>(() => cleanDesign(savedDesign));
+  const [designBase, setDesignBase] = useState(() => JSON.stringify(cleanDesign(savedDesign)));
+  const designJson = JSON.stringify(cleanDesign(design));
+  const designChanged = designJson !== designBase;
+  const [tokens, setTokens] = useState<Record<string, string>>({});
+  const [block, setBlock] = useState<PickedBlock | null>(null);
+  const [designOpen, setDesignOpen] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   // "Find any text": every line, including ones that only show sometimes (sold out, empty cart, login steps).
@@ -99,7 +109,7 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
   const imgsChanged = IMAGE_KEYS.filter((k) => imgs[k] !== imgBase[k]);
   const upload = useUploadFile();
   const [uploading, setUploading] = useState(false);
-  const unsaved = draftJson !== base || imgsChanged.length > 0;
+  const unsaved = draftJson !== base || imgsChanged.length > 0 || designChanged;
   const changedCount = Object.keys(current).length;
 
   const storeOrigin = useMemo(() => {
@@ -115,15 +125,22 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.source !== frame.current?.contentWindow || e.origin !== storeOrigin || !e.data || typeof e.data !== "object") return;
-      const m = e.data as { type: string; key?: string; href?: string; path?: string };
+      const m = e.data as { type: string; key?: string; href?: string; path?: string; count?: number; colors?: Record<string, string> };
       if (m.type === "vv:ready") {
         setLoading(false);
         if (m.path) setShownPath(m.path);
         send({ type: "vv:mode", mode });
+        send({ type: "vv:design", css: designCss(designRef.current), fonts: designFontsHref(designRef.current) });
+        send({ type: "vv:tokens" });
         // Unsaved pictures aren't on the server yet: put them back into every page that loads.
         for (const k of imgsChangedRef.current) send({ type: "vv:img", key: k, src: imgsRef.current[k] });
       } else if ((m.type === "vv:edit" && m.key && BY_KEY.has(m.key)) || (m.type === "vv:image" && m.key && isImageKey(m.key))) setSelected(m.key!);
       else if (m.type === "vv:open" && m.href?.startsWith("/admin/")) window.open(m.href, "_blank", "noopener");
+      else if (m.type === "vv:tokens" && m.colors) setTokens(m.colors);
+      else if (m.type === "vv:block" && m.key) {
+        setSelected(null);
+        setBlock({ key: m.key as PickedBlock["key"], count: m.count ?? 1, colors: (m.colors ?? {}) as PickedBlock["colors"] });
+      }
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
@@ -133,7 +150,12 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
   const imgsChangedRef = useRef(imgsChanged);
   imgsRef.current = imgs;
   imgsChangedRef.current = imgsChanged;
+  const designRef = useRef(design);
+  designRef.current = design;
   useEffect(() => send({ type: "vv:mode", mode }), [mode, send]);
+  // Every design change is shown in the frame straight away.
+  useEffect(() => send({ type: "vv:design", css: designCss(design), fonts: designFontsHref(design) }), [designJson, send]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => send({ type: "vv:selectBlock", key: block?.key ?? null }), [block?.key, send]);
   useEffect(() => send({ type: "vv:select", key: selected }), [selected, send]);
 
   // Unsaved text goes to the server as a short-lived admin-only draft, so page changes inside the frame keep it.
@@ -171,6 +193,7 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
 
   const saveText = useMutation(trpc.admin.saveContent.mutationOptions());
   const saveImgs = useMutation(trpc.admin.saveImages.mutationOptions());
+  const saveDesignM = useMutation(trpc.admin.saveDesign.mutationOptions());
   const [saving, setSaving] = useState(false);
   const save = async () => {
     setSaving(true);
@@ -178,8 +201,10 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
       // Text and pictures live in the same file: save one after the other, never at the same time.
       if (draftJson !== base) await saveText.mutateAsync({ content: current });
       if (imgsChanged.length) await saveImgs.mutateAsync({ images: Object.fromEntries(IMAGE_KEYS.map((k) => [k, imgs[k]])) });
+      if (designChanged) await saveDesignM.mutateAsync({ design: JSON.parse(designJson) });
       setBase(draftJson);
       setImgBase(imgs);
+      setDesignBase(designJson);
       qc.invalidateQueries({ queryKey: trpc.admin.siteConfig.queryKey() });
       toast("Saved. Shoppers see the changes now.");
     } catch (e) {
@@ -207,6 +232,8 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
   };
 
   const discard = () => {
+    setDesign(JSON.parse(designBase) as Design);
+    setBlock(null);
     for (const k of imgsChanged) send({ type: "vv:img", key: k, src: imgBase[k] });
     setImgs(imgBase);
     const back = JSON.parse(base) as Record<string, string>;
@@ -245,11 +272,12 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
         <div className="flex rounded-full bg-sky p-0.5" role="radiogroup" aria-label="What tapping does">
           {(
             [
-              ["edit", "Edit text", Pencil],
+              ["edit", "Text", Pencil],
+              ["style", "Style", Paintbrush],
               ["browse", "Browse", MousePointerClick],
             ] as const
           ).map(([v, l, Icon]) => (
-            <button key={v} type="button" role="radio" aria-checked={mode === v} onClick={() => setMode(v)} className={cn("inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold", mode === v ? "bg-paper text-ink shadow-lift" : "text-ink-soft")}>
+            <button key={v} type="button" role="radio" aria-checked={mode === v} onClick={() => { setMode(v); if (v !== "style") setBlock(null); }} className={cn("inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold", mode === v ? "bg-paper text-ink shadow-lift" : "text-ink-soft")}>
               <Icon className="size-3.5" aria-hidden /> {l}
             </button>
           ))}
@@ -266,6 +294,9 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
             </button>
           ))}
         </div>
+        <button type="button" onClick={() => setDesignOpen((o) => !o)} aria-pressed={designOpen} className={cn("inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-bold xl:hidden", designOpen ? "bg-ink text-white" : "text-ink-soft hover:bg-sky")}>
+          <Palette className="size-4" aria-hidden /> Design
+        </button>
         <button type="button" onClick={() => { setSelected(null); setFinding(true); }} className="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-sky lg:hidden" aria-label="Find any text">
           <Search className="size-4" aria-hidden />
         </button>
@@ -285,7 +316,19 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
         </div>
       </div>
 
+      {/* Font samples in the design panel need the fonts themselves (admin page only). */}
+      <link rel="stylesheet" href={ALL_FONTS_HREF} />
       <div className="relative flex min-h-0 flex-1">
+        {/* Design: colours, fonts and look for the whole store (left column on wide screens, a sheet otherwise) */}
+        <aside
+          className={cn(
+            "z-20 flex-col overflow-y-auto border-line bg-paper",
+            "xl:flex xl:w-[300px] xl:shrink-0 xl:border-r",
+            designOpen ? "max-xl:absolute max-xl:inset-y-0 max-xl:left-0 max-xl:flex max-xl:w-[min(340px,92vw)] max-xl:border-r max-xl:shadow-float" : "max-xl:hidden",
+          )}
+        >
+          <DesignPanel design={design} setDesign={setDesign} tokens={tokens} onClose={() => setDesignOpen(false)} />
+        </aside>
         {/* The store */}
         <Frame device={device} frameKey={frameKey} path={path} frame={frame} loading={loading} onLoad={() => setLoading(false)} />
 
@@ -295,10 +338,12 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
             "z-10 flex flex-col border-line bg-paper",
             "max-lg:absolute max-lg:inset-x-0 max-lg:bottom-0 max-lg:max-h-[60%] max-lg:rounded-t-3xl max-lg:border-t max-lg:shadow-float max-lg:pb-[env(safe-area-inset-bottom,0px)]",
             "lg:w-[380px] lg:shrink-0 lg:border-l",
-            !field && !slotKey && !finding && "max-lg:hidden",
+            !field && !slotKey && !finding && !block && "max-lg:hidden",
           )}
         >
-          {slotKey ? (
+          {block ? (
+            <BlockPanel block={block} design={design} setDesign={setDesign} onClose={() => setBlock(null)} />
+          ) : slotKey ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
               <div className="mb-3 flex items-start justify-between gap-2">
                 <div>
@@ -396,6 +441,8 @@ function Editor({ saved, savedImages, pages }: { saved: Record<string, string>; 
                 <li>It changes in the page as you type. Nothing changes for shoppers until you press Save.</li>
                 <li>Tap the logo or a painting to change the picture.</li>
                 <li>Tap a product to edit it, or the banner, ribbon or Shop menu to open their own editors.</li>
+                <li>Switch to Style, then tap any part of the page (a section, the menu, a card) to change its colours, fonts and corners. Cards change together.</li>
+                <li>Colours, fonts and the overall look of the whole store are in the Design panel.</li>
                 <li>Switch to Browse to follow links and visit other pages.</li>
               </ol>
               <p className="mt-6 font-bold">Pictures</p>

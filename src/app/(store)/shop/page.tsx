@@ -48,7 +48,7 @@ export default async function Shop({ searchParams }: { searchParams: SP }) {
 
   return (
     <>
-      <div className="on-dark relative overflow-hidden" data-tint="royal">
+      <div className="on-dark relative overflow-hidden" data-s="band">
         <Toran id="toran-shop" variant="bells" className="absolute inset-x-0 top-0" />
         <Rangoli spin className="absolute -top-28 -right-28 size-72 text-gold opacity-[0.12] sm:size-96" />
         <Container className="relative grid items-end gap-6 pt-20 pb-16 lg:grid-cols-12 lg:pt-24 lg:pb-20">

@@ -21,8 +21,8 @@ const isDev = process.env.NODE_ENV !== "production";
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://checkout.razorpay.com`,
-  "style-src 'self' 'unsafe-inline' https://api.fontshare.com",
-  "font-src 'self' data: https://cdn.fontshare.com",
+  "style-src 'self' 'unsafe-inline' https://api.fontshare.com https://fonts.googleapis.com",
+  "font-src 'self' data: https://cdn.fontshare.com https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   `connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://*.r2.cloudflarestorage.com${isDev ? " ws: http://localhost:*" : ""}`,

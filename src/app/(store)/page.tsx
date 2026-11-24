@@ -92,7 +92,7 @@ export default async function Home() {
 
       {/* Shop by category: single items, so the store isn't only boxes and sets */}
       {catTiles.length > 1 && (
-        <section className="home-cats" aria-labelledby="cats" data-tint="mor">
+        <section className="home-cats" aria-labelledby="cats" data-s="home.cats">
           <Container>
             <div className="flex flex-wrap items-end justify-between gap-6">
               <h2 id="cats">{c.categoriesTitle}</h2>
@@ -103,7 +103,7 @@ export default async function Home() {
             <ul style={{ ["--cats" as string]: catTiles.length }} className="no-scrollbar -mx-[var(--gutter)] mt-10 flex snap-x gap-4 overflow-x-auto scroll-px-[var(--gutter)] px-[var(--gutter)] pb-2 md:mx-0 md:grid md:grid-cols-4 md:gap-5 md:overflow-visible md:px-0 lg:grid-cols-[repeat(var(--cats),minmax(0,1fr))]">
               {catTiles.map((t) => (
                 <li key={t.slug} className="w-[36%] shrink-0 snap-start sm:w-[26%] md:w-auto">
-                  <Link href={`/shop?category=${t.slug}`} className="home-cat group block">
+                  <Link href={`/shop?category=${t.slug}`} className="home-cat group block" data-s="card.category">
                     <span className="home-cat-media">
                       {t.image ? <Media src={t.image} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /> : <ProductArt name={t.name} seed={t.seed} />}
                     </span>
@@ -121,7 +121,7 @@ export default async function Home() {
 
       {/* The boxes: with one or two, the heading sits beside them instead of above a mostly empty row */}
       {boxes.length > 0 && (
-        <section className="home-boxes" aria-labelledby="boxes" data-tint="gold">
+        <section className="home-boxes" aria-labelledby="boxes" data-s="home.boxes">
           <Container className={cn(boxes.length <= 2 && "lg:grid lg:grid-cols-12 lg:items-center lg:gap-[var(--gap-columns)]")}>
             <div className={cn("home-section-heading grid items-end gap-6", boxes.length <= 2 ? "lg:col-span-5 lg:block" : "lg:grid-cols-12")}>
               <h2 id="boxes" className={cn(boxes.length > 2 && "lg:col-span-7")}>
@@ -141,7 +141,7 @@ export default async function Home() {
       )}
 
       {essentials.length > 0 && (
-        <section className="home-essentials" aria-labelledby="essentials" data-tint="mor">
+        <section className="home-essentials" aria-labelledby="essentials" data-s="home.essentials">
           <Container>
             <div className="flex flex-wrap items-end justify-between gap-6">
               <h2 id="essentials">{anyTrending ? c.essentialsTrendingTitle : c.essentialsTitle}</h2>
@@ -162,7 +162,7 @@ export default async function Home() {
       {(japa.length > 0 || shringar.length > 0) && <SetSwitcher japa={japa} shringar={shringar} />}
 
       {/* Shloka band: the brand's line, set as the picture, beside the user's own painting */}
-      <section className="home-philosophy on-dark" aria-labelledby="shloka" data-tint="royal">
+      <section className="home-philosophy on-dark" aria-labelledby="shloka" data-s="home.shloka">
         <Container className="home-philosophy-grid">
           <div className="home-philosophy-art">
             <div className="arch-frame">
@@ -185,7 +185,7 @@ export default async function Home() {
 
       {/* Follow along: the brand's own channels */}
       {(socialUrl("instagram", settings.instagram) || socialUrl("youtube", settings.youtube)) && (
-        <section className="home-follow" aria-labelledby="follow" data-tint="gulal">
+        <section className="home-follow" aria-labelledby="follow" data-s="home.follow">
           <Container>
             <h2 id="follow">{c.followTitle}</h2>
             <div className="home-social-grid">

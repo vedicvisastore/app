@@ -1,4 +1,6 @@
 import { CartDrawer } from "@/components/cart/cart-drawer";
+import { Suspense } from "react";
+import { NavProgress } from "@/components/site/nav-progress";
 import "./motion.css";
 import { Footer } from "@/components/site/footer";
 import { Header } from "@/components/site/header";
@@ -18,6 +20,9 @@ export default async function StoreLayout({ children }: { children: React.ReactN
   const menuCats = pick.length ? pick.map((slug) => categories.find((c) => c.slug === slug)).filter((c) => !!c) : categories;
   return (
     <>
+      {/* The owner's design (visual editor): in the HTML itself, so the first paint is already right. */}
+      {site.designFonts && <link rel="stylesheet" href={site.designFonts} precedence="default" />}
+      {site.designCss && <style id="vv-design" dangerouslySetInnerHTML={{ __html: site.designCss }} />}
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:rounded-full focus:bg-royal focus:px-4 focus:py-2 focus:text-white">
         Skip to content
       </a>
@@ -33,6 +38,9 @@ export default async function StoreLayout({ children }: { children: React.ReactN
       <main id="main" className="pb-[var(--section-gap-s)]">{children}</main>
       <Footer settings={settings} categories={categories} sets={sets} copy={site.content.footer} logo={site.images["brand.logoRound"]} />
       <CartDrawer />
+      <Suspense fallback={null}>
+        <NavProgress />
+      </Suspense>
       <FramedNoScrollbar />
       {(site.previewing || site.editing) && <PreviewScrollKeeper />}
       {site.editing && <VisualEditBridge />}

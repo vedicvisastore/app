@@ -5,7 +5,7 @@ import { Rangoli, Toran } from "./ornaments";
 /** Dark title band used at the top of listing pages (shop, deals, new launches, festivals). */
 export function PageIntro({ title, lede, eyebrow, className, children }: { title: string; lede?: string; eyebrow?: React.ReactNode; className?: string; children?: React.ReactNode }) {
   return (
-    <div className={cn("on-dark relative overflow-hidden", className)} data-tint="royal">
+    <div className={cn("on-dark relative overflow-hidden", className)} data-s="band">
       <Toran id="toran-band" variant="bells" className="absolute inset-x-0 top-0" />
       <Rangoli spin className="absolute -top-28 -right-28 size-72 text-gold opacity-[0.12] sm:size-96" />
       <Container className="relative grid items-end gap-6 pt-16 pb-12 sm:pt-20 sm:pb-16 lg:grid-cols-12 lg:pt-24 lg:pb-20">

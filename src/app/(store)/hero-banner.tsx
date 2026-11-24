@@ -122,6 +122,7 @@ export function HeroBanner({ slides }: { slides: BannerSlide[] }) {
     <section
       ref={root}
       className="hb"
+      data-s="home.banner"
       data-tint="peacock"
       data-vv-section="/admin/hero"
       data-vv-label="Edit banner"

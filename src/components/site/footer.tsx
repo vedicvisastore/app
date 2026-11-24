@@ -24,7 +24,7 @@ export function Footer({ settings, categories = [], sets = [], copy, logo = "/br
   const yt = socialUrl("youtube", settings.youtube);
   const creator = socialUrl("instagram", settings.creatorInstagram);
   return (
-    <footer className="on-dark relative overflow-hidden">
+    <footer className="on-dark relative overflow-hidden" data-s="footer">
       <Rangoli spin className="absolute -right-24 -bottom-24 size-80 text-gold opacity-[0.07] sm:size-[26rem]" />
       <OrnamentDivider kind="diya" className="footer-ornament" />
       <Container className="relative grid gap-x-[var(--gap-columns)] gap-y-12 pt-16 pb-12 lg:grid-cols-12 lg:pt-20">

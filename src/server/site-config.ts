@@ -10,9 +10,10 @@ import { DEFAULT_CUSTOM, themeCss, themeTokens, THEMES, type CustomTheme } from 
 import { clearCache, sharedCached } from "./cache";
 import { tag } from "@/lib/stega";
 import { mergeImages, type SiteImages } from "@/content/images";
+import { designCss, designFontsHref, type Design } from "@/lib/design";
 import { env } from "./env";
 
-export type SiteConfig = { theme: string; customTheme: CustomTheme; content: Record<string, string>; images?: Record<string, string>; updatedAt?: string };
+export type SiteConfig = { theme: string; customTheme: CustomTheme; content: Record<string, string>; images?: Record<string, string>; design?: Design; updatedAt?: string };
 const EMPTY: SiteConfig = { theme: "vrindavan", customTheme: DEFAULT_CUSTOM, content: {} };
 const KEY = "site/config.json";
 
@@ -102,7 +103,7 @@ export async function saveSiteConfig(next: SiteConfig) {
 }
 
 /** What every page needs: merged copy and the theme CSS. */
-export async function getSite(): Promise<{ content: SiteContent; images: SiteImages; themeKey: string; themeCss: string; previewing: boolean; editing: boolean }> {
+export async function getSite(): Promise<{ content: SiteContent; images: SiteImages; themeKey: string; themeCss: string; designCss: string; designFonts: string | null; previewing: boolean; editing: boolean }> {
   const [cfg, { draft, edit }] = await Promise.all([getSiteConfig().catch(() => lastGood ?? EMPTY), import("./content-preview").then((m) => m.requestAdminView())]);
   const key = cfg.theme === "custom" || THEMES.some((t) => t.key === cfg.theme) ? cfg.theme : "vrindavan";
   // An admin previewing unsaved text in Admin → Store text sees the draft instead of the saved text.
@@ -110,5 +111,5 @@ export async function getSite(): Promise<{ content: SiteContent; images: SiteIma
   const merged = text ? mergeContent(text) : DEFAULT_CONTENT;
   // Visual editor: every text carries its key invisibly, so the admin can click it in the store to edit it.
   const content = edit ? (Object.fromEntries(Object.entries(merged).map(([g, fields]) => [g, Object.fromEntries(Object.entries(fields as Record<string, string>).map(([f, v]) => [f, tag(v, `${g}.${f}`)]))])) as SiteContent) : merged;
-  return { content, images: mergeImages(cfg.images), themeKey: key, themeCss: themeCss(themeTokens(key, cfg.customTheme), "html:root"), previewing: !!draft && JSON.stringify(Object.entries(draft).sort()) !== JSON.stringify(Object.entries(cfg.content ?? {}).filter(([, v]) => v.trim()).sort()), editing: edit };
+  return { content, images: mergeImages(cfg.images), designCss: designCss(cfg.design ?? {}), designFonts: designFontsHref(cfg.design ?? {}), themeKey: key, themeCss: themeCss(themeTokens(key, cfg.customTheme), "html:root"), previewing: !!draft && JSON.stringify(Object.entries(draft).sort()) !== JSON.stringify(Object.entries(cfg.content ?? {}).filter(([, v]) => v.trim()).sort()), editing: edit };
 }

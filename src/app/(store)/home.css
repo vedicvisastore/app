@@ -8,7 +8,7 @@
   --home-hero-field: color-mix(in oklab, var(--color-royal) 89%, var(--color-shyam));
   --home-hero-arch: color-mix(in oklab, var(--color-royal) 55%, var(--color-shyam));
   --home-hairline: color-mix(in oklab, var(--color-gold) 32%, transparent);
-  --home-section-space: clamp(72px, 8vw, 120px);
+  --home-section-space: calc(clamp(72px, 8vw, 120px) * var(--section-scale, 1));
 }
 .home-page h2 { text-wrap: balance; }
 .home-page :is(a, button):focus-visible { outline: 2.5px solid var(--color-focus); outline-offset: 4px; }
@@ -189,4 +189,4 @@
 
 /* Shop by category (single items) */
 .home-cats { padding-top: var(--home-section-space, var(--section-gap-s)); }
-.home-cat-media { display: block; aspect-ratio: 1; overflow: hidden; border-radius: 20px; background: var(--color-paper-2); }
+.home-cat-media { display: block; aspect-ratio: 1; overflow: hidden; border-radius: var(--radius-card); background: var(--color-paper-2); }

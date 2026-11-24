@@ -9,13 +9,14 @@ type BtnProps = {
 
 export function btnClass({ variant = "primary", size = "md", className }: BtnProps = {}) {
   return cn(
-    "inline-flex items-center justify-center gap-2 rounded-full font-bold whitespace-nowrap select-none transition-[background-color,color,border-color,transform] duration-[var(--dur-short)] ease-[var(--ease-out)] active:translate-y-px disabled:opacity-55 disabled:cursor-not-allowed aria-disabled:opacity-55",
+    // vv-btn-*: hooks for the owner's design (button shape, colours) from the visual editor.
+    "vv-btn inline-flex items-center justify-center gap-2 rounded-[var(--radius-button,999px)] font-bold whitespace-nowrap select-none transition-[background-color,color,border-color,transform] duration-[var(--dur-short)] ease-[var(--ease-out)] active:translate-y-px disabled:opacity-55 disabled:cursor-not-allowed aria-disabled:opacity-55",
     size === "sm" && "h-10 px-4 text-sm",
     size === "md" && "h-12 px-6 text-[0.95rem]",
     size === "lg" && "h-[52px] px-8 text-base",
     // One filled recipe across the store: bansuri gold with Shyam ink. "gold" is kept as an alias.
-    (variant === "primary" || variant === "gold") && "bg-gold text-shyam hover:bg-[color-mix(in_oklab,var(--color-gold)_88%,var(--color-ink))]",
-    variant === "outline" && "border-[1.5px] border-current/30 hover:border-current",
+    (variant === "primary" || variant === "gold") && "vv-btn-primary bg-gold text-shyam hover:bg-[color-mix(in_oklab,var(--color-gold)_88%,var(--color-ink))]",
+    variant === "outline" && "vv-btn-outline border-[1.5px] border-current/30 hover:border-current",
     variant === "ghost" && "text-ink-soft hover:text-ink hover:bg-sky",
     variant === "danger" && "bg-gulal-soft text-gulal hover:bg-gulal hover:text-white",
     className,

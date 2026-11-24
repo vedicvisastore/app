@@ -30,7 +30,7 @@ export function HomePicks({ best, offers, fresh, chips }: { best: CardProduct[];
   const allHref = tab === "offers" ? "/deals" : tab === "new" ? "/new" : "/shop";
 
   return (
-    <section className="home-picks" aria-labelledby="picks" data-tint="gulal">
+    <section className="home-picks" aria-labelledby="picks" data-s="home.picks">
       <Container>
         {chips.length > 0 && (
           <ul className="no-scrollbar -mx-[var(--gutter)] mb-6 -mt-1.5 flex gap-2 overflow-x-auto px-[var(--gutter)] py-1.5" aria-label="Offers right now">

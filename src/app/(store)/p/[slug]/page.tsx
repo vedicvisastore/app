@@ -50,7 +50,7 @@ export default async function ProductPage({ params }: { params: Params }) {
 
   return (
     <>
-      <Container className="grid gap-10 pt-8 md:grid-cols-2 lg:gap-16" data-pid={p.id}>
+      <Container className="grid gap-10 pt-8 md:grid-cols-2 lg:gap-16" data-pid={p.id} data-s="product.main">
         <div className="md:col-span-2"><nav aria-label="Breadcrumb" className="text-sm text-ink-mute">
           <ol className="flex flex-wrap items-center gap-1.5">
             <li><Link href="/shop" className="hover:text-royal">Shop</Link></li>
@@ -142,7 +142,7 @@ export default async function ProductPage({ params }: { params: Params }) {
       )}
 
       {related.length > 0 && (
-        <section className="mt-[var(--section-gap)] -mb-[var(--section-gap-s)] bg-paper-2 pt-[var(--section-gap-s)] pb-[calc(var(--section-gap-s)*0.75)]" aria-labelledby="related" data-tint="peacock">
+        <section className="mt-[var(--section-gap)] -mb-[var(--section-gap-s)] bg-paper-2 pt-[var(--section-gap-s)] pb-[calc(var(--section-gap-s)*0.75)]" aria-labelledby="related" data-s="product.related">
           <Container>
             <h2 id="related">
               {c.relatedTitle}

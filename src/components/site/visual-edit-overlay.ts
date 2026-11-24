@@ -6,11 +6,18 @@
  * - In edit mode, tapping marked text asks the editor (the parent window) to edit that key; tapping a product,
  *   the banner or the shop menu asks it to open the matching admin page.
  * - Applies edits the editor sends back straight into the page, so typing shows instantly.
+ * - In style mode, tapping a part of the page (a section, the menu, a card…) asks the editor to style that part,
+ *   and the editor's unsaved design arrives as CSS that replaces the saved design while editing.
  */
+import { BLOCKS, COLOR_ROLES, type BlockKey } from "@/lib/design";
 import { decodeTag, TAG_RE } from "@/lib/stega";
 
+type Mode = "edit" | "style" | "browse";
 type Msg =
-  | { type: "vv:mode"; mode: "edit" | "browse" }
+  | { type: "vv:mode"; mode: Mode }
+  | { type: "vv:design"; css: string; fonts: string | null }
+  | { type: "vv:tokens" }
+  | { type: "vv:selectBlock"; key: string | null }
   | { type: "vv:set"; key: string; value: string }
   | { type: "vv:select"; key: string | null }
   | { type: "vv:img"; key: string; src: string };
@@ -24,7 +31,10 @@ export function start() {
   if (started || window.parent === window) return;
   started = true;
   const nodes = new Map<string, Set<Text>>();
-  let mode: "edit" | "browse" = "edit";
+  let mode: Mode = "edit";
+  const blockKeys = Object.keys(BLOCKS) as BlockKey[];
+  const blockSel = blockKeys.map((k) => BLOCKS[k].selector).join(",");
+  const blockOf = (el: Element) => blockKeys.find((k) => el.matches(BLOCKS[k].selector)) ?? null;
   let parentOrigin = "*";
   let lastHref = "";
 
@@ -44,6 +54,9 @@ export function start() {
       padding: 4px 10px; border-radius: 999px; background: var(--color-royal); color: #fff; font: 700 12px/1.4 system-ui, sans-serif;
       box-shadow: 0 4px 14px rgb(0 0 0 / .18);
     }
+    html.vv-styling :is(${blockSel}) { cursor: pointer; }
+    html.vv-styling :is(${blockSel}):hover { outline: 2px dashed color-mix(in oklab, var(--color-royal) 75%, transparent); outline-offset: -2px; }
+    html.vv-styling .vv-block-selected { outline: 3px solid var(--color-gulal) !important; outline-offset: -3px; }
   `;
   document.head.appendChild(style);
   document.documentElement.classList.add("vv-editing");
@@ -108,6 +121,17 @@ export function start() {
   document.addEventListener(
     "click",
     (e) => {
+      if (mode === "style") {
+        const el = (e.target as Element | null)?.closest(blockSel);
+        if (!el) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const key = blockOf(el);
+        if (!key) return;
+        selectBlock(key);
+        post({ type: "vv:block", key, count: document.querySelectorAll(BLOCKS[key].selector).length, colors: colorsOf(el) });
+        return;
+      }
       if (mode !== "edit") return;
       const target = e.target as Element | null;
       const textEl = target?.closest(`[${KEY_ATTR}]`);
@@ -142,7 +166,45 @@ export function start() {
     if (m.type === "vv:mode") {
       mode = m.mode;
       document.documentElement.classList.toggle("vv-editing", mode === "edit");
+      document.documentElement.classList.toggle("vv-styling", mode === "style");
+      if (mode !== "style") selectBlock(null);
       post({ type: "vv:ready", path: location.pathname + location.search });
+    } else if (m.type === "vv:design") {
+      // The editor's unsaved design replaces the saved one (the server's <style id="vv-design">) while editing.
+      const saved = document.getElementById("vv-design") as HTMLStyleElement | null;
+      if (saved) saved.media = "not all";
+      let live = document.getElementById("vv-design-live") as HTMLStyleElement | null;
+      if (!live) {
+        live = document.createElement("style");
+        live.id = "vv-design-live";
+        document.head.appendChild(live);
+      }
+      live.textContent = m.css;
+      if (m.fonts && /^https:\/\/fonts\.googleapis\.com\//.test(m.fonts)) {
+        let link = document.getElementById("vv-design-fonts") as HTMLLinkElement | null;
+        if (!link) {
+          link = document.createElement("link");
+          link.id = "vv-design-fonts";
+          link.rel = "stylesheet";
+          document.head.appendChild(link);
+        }
+        if (link.href !== m.fonts) link.href = m.fonts;
+      }
+    } else if (m.type === "vv:tokens") {
+      // Resolve each colour through a hidden probe (tokens can be var() / color-mix chains).
+      const probe = document.createElement("span");
+      probe.style.display = "none";
+      document.body.appendChild(probe);
+      const colors = Object.fromEntries(
+        COLOR_ROLES.map((r) => {
+          probe.style.color = `var(--color-${r.token})`;
+          return [r.token, toHex(getComputedStyle(probe).color)];
+        }),
+      );
+      probe.remove();
+      post({ type: "vv:tokens", colors });
+    } else if (m.type === "vv:selectBlock") {
+      selectBlock(m.key && m.key in BLOCKS ? (m.key as BlockKey) : null);
     } else if (m.type === "vv:set") {
       // Words with {placeholders} need the server to fill them in; the editor reloads the page for those.
       if (/\{\w+\}/.test(m.value)) return;
@@ -159,4 +221,36 @@ export function start() {
       if (m.key) document.querySelector(`[${KEY_ATTR}="${CSS.escape(m.key)}"], img[data-vv-img="${CSS.escape(m.key)}"]`)?.classList.add("vv-selected");
     }
   });
+
+  function selectBlock(key: BlockKey | null) {
+    document.querySelectorAll(".vv-block-selected").forEach((x) => x.classList.remove("vv-block-selected"));
+    if (key) document.querySelectorAll(BLOCKS[key].selector).forEach((x) => x.classList.add("vv-block-selected"));
+  }
+}
+
+/** The colours a part of the page shows right now (its own background or the one behind it), as #rrggbb. */
+function colorsOf(el: Element) {
+  let bgEl: Element | null = el;
+  let bg = "";
+  while (bgEl && !bg) {
+    const c = getComputedStyle(bgEl).backgroundColor;
+    if (c && c !== "transparent" && !/rgba\(.*,\s*0\)$/.test(c)) bg = c;
+    bgEl = bgEl.parentElement;
+  }
+  const heading = el.querySelector("h1,h2,h3,.font-display");
+  const text = el.querySelector("p") ?? el;
+  return { bg: toHex(bg || "#ffffff"), text: toHex(getComputedStyle(text).color), heading: toHex(heading ? getComputedStyle(heading).color : getComputedStyle(el).color) };
+}
+
+let ctx: CanvasRenderingContext2D | null = null;
+/** Any CSS colour (oklch, color-mix…) → #rrggbb, by painting one pixel. */
+function toHex(css: string) {
+  ctx ??= Object.assign(document.createElement("canvas"), { width: 1, height: 1 }).getContext("2d", { willReadFrequently: true });
+  if (!ctx || !css.trim()) return "#000000";
+  ctx.clearRect(0, 0, 1, 1);
+  ctx.fillStyle = "#000";
+  ctx.fillStyle = css.trim();
+  ctx.fillRect(0, 0, 1, 1);
+  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+  return `#${[r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
 }

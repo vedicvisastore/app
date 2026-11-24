@@ -12,7 +12,7 @@ function StockNote({ available }: { available: number | null }) {
 
 export function ProductCard({ p, priority }: { p: CardProduct; priority?: boolean }) {
   return (
-    <article className="vv-reveal group relative flex flex-col" data-pid={p.id}>
+    <article className="vv-reveal group relative flex flex-col" data-pid={p.id} data-s="card.product">
       <Link href={`/p/${p.slug}`} aria-label={p.name} className="relative block aspect-[4/5] overflow-hidden rounded-[var(--radius-card)] bg-paper-2">
         {p.image ? (
           <Media src={p.image} alt={p.name} priority={priority} className="h-full w-full object-cover transition-transform duration-700 ease-[var(--ease-out)] group-hover:scale-[1.04]" />
@@ -51,7 +51,7 @@ export function ProductCard({ p, priority }: { p: CardProduct; priority?: boolea
 export function BoxCard({ p, priority }: { p: CardProduct; priority?: boolean }) {
   const saving = p.worth - p.price;
   return (
-    <article className="group flex flex-col" data-pid={p.id}>
+    <article className="group flex flex-col" data-pid={p.id} data-s="card.box">
       <Link href={`/p/${p.slug}`} aria-label={p.name} className="relative block aspect-[4/5] overflow-hidden rounded-[var(--radius-card)] bg-paper-2">
           {p.image ? <Media src={p.image} alt={p.name} priority={priority} className="h-full w-full object-cover" /> : <ProductArt name={p.name} seed={p.id} />}
           {p.upcoming && <Badge tone="haldi" className="absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap">{launchLabel(p.launchAt)}</Badge>}

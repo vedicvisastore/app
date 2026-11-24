@@ -90,7 +90,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, s
   return (
     <>
       {ribbon.length > 0 && (
-        <div className="marquee-wrap overflow-hidden bg-royal text-white" aria-label="Store announcements" data-vv-section="/admin/ribbon" data-vv-label="Edit ribbon">
+        <div className="marquee-wrap overflow-hidden bg-royal text-white" aria-label="Store announcements" data-vv-section="/admin/ribbon" data-vv-label="Edit ribbon" data-s="ribbon">
           <div className="marquee py-2 text-[0.8125rem]" style={{ animationDuration: `${ribbonSeconds}s` }}>
             {[0, 1].map((k) => (
               <div key={k} className="flex shrink-0" aria-hidden={k === 1}>
@@ -116,7 +116,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, s
         </div>
       )}
 
-      <header className="vv-header sticky top-0 z-[300] border-b border-line bg-paper lg:border-b-0">
+      <header className="vv-header sticky top-0 z-[300] border-b border-line bg-paper lg:border-b-0" data-s="header">
         {/* Top row: search · logo (centre) · account and cart */}
         <div className="wrap grid h-[84px] grid-cols-[1fr_auto_1fr] items-center gap-3 sm:h-[92px] lg:h-[120px]">
           <div className="flex items-center gap-1">
@@ -166,7 +166,7 @@ export function Header({ ribbon, ribbonSeconds, signedIn, isAdmin, categories, s
         </div>
 
         {/* Second row (desktop): the menu */}
-        <nav className="vv-menu hidden bg-shyam lg:block" aria-label="Main">
+        <nav className="vv-menu hidden bg-shyam lg:block" aria-label="Main" data-s="menu">
           <ul className="wrap flex h-14 items-center justify-center gap-6 xl:gap-9">
             <li>
               <Dropdown label={copy.shop} active={pathname === "/shop"} pathname={pathname} wide>
