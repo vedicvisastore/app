@@ -15,6 +15,7 @@
  *    as their items), Came back (cancellations, returns), Corrections (manual counts), Damaged.
  */
 import ExcelJS from "exceljs";
+import type { ReportSheet } from "./report-sheets";
 
 type Data = {
   from: string;
@@ -80,7 +81,9 @@ function totalsRow(ws: ExcelJS.Worksheet, firstRow: number, lastRow: number, sum
 type Sales = { orders: number; units: number; items: number; discount: number; shipping: number; cost: number; cancelled: number };
 const emptySales = (): Sales => ({ orders: 0, units: 0, items: 0, discount: 0, shipping: 0, cost: 0, cancelled: 0 });
 
-export async function buildReportWorkbook(d: Data, label: string): Promise<Blob> {
+export async function buildReportWorkbook(d: Data, label: string, sheets: Iterable<ReportSheet>): Promise<Blob> {
+  const chosen = new Set(sheets);
+  const want = (k: ReportSheet) => chosen.has(k);
   const wb = new ExcelJS.Workbook();
   wb.creator = "VedicVisa admin";
   wb.created = new Date();
@@ -147,7 +150,7 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
     ["Units sent inside boxes", "Product analytics: how many of an item left inside boxes that were sold (box sales × the item's quantity in the box)."],
     ["Share", "A row's part of the sheet's total (for example a state's share of revenue)."],
     ["Product profit", "In Product and Category analytics, profit is before order discounts, because coupons and offers apply to whole orders. The Summary's gross profit is after discounts."],
-    ["Customers", "Different email addresses with at least one sale in the period. Ordered again = more than one sale in the period."],
+    ["Customers", "In the Summary and the state and city sheets: different email addresses with at least one sale in the period."],
   ];
   for (const [k, v] of defs) {
     const row = me.addRow([k, v]);
@@ -155,10 +158,11 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
     row.getCell(2).alignment = { wrapText: true };
   }
   me.addRow([]);
-  me.addRow(["Sheets", "Summary · Monthly sales · Yearly sales · Product analytics · Category analytics · State analytics · City analytics · Customers · Coupons and offers · Daily sales · Weekdays · Hours · Product stock · Product by month · Stock ledger · Orders · Order lines"]).getCell(1).font = { bold: true };
+  me.addRow(["Sheets in this file", "(listed at the end, once built)"]).getCell(1).font = { bold: true };
+  const sheetsRow = me.rowCount;
   me.getRow(me.rowCount).getCell(2).alignment = { wrapText: true };
 
-  const summary = wb.addWorksheet("Summary");
+  const summary = want("summary") ? wb.addWorksheet("Summary") : null;
 
   // ── Monthly / yearly sales ──
   const salesSheet = (name: string, keys: string[], data: Map<string, Sales>, labelOf: (k: string) => string) => {
@@ -201,8 +205,8 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
     for (const c of [4, 5, 6, 7, 8, 9]) ws.getColumn(c).numFmt = MONEY;
     ws.getColumn(10).numFmt = "0.0%";
   };
-  salesSheet("Monthly sales", months, byMonth, monthLabel);
-  salesSheet("Yearly sales", [...byYear.keys()].sort(), byYear, (k) => k);
+  if (want("monthly")) salesSheet("Monthly sales", months, byMonth, monthLabel);
+  if (want("yearly")) salesSheet("Yearly sales", [...byYear.keys()].sort(), byYear, (k) => k);
 
   // ── Analytics: products, categories, places, customers, offers, days ──
   const countedLines = d.lines.filter((l) => orderById.get(l.orderId)?.counted);
@@ -263,7 +267,7 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
         p.views, p.stock ?? "not tracked",
       ] as (string | number | ExcelJS.CellFormulaValue)[];
     });
-  const pa = shareSheet(
+  if (want("products")) shareSheet(
     "Product analytics",
     [
       { header: "Rank", width: 6 }, { header: "SKU", width: 22 }, { header: "Product", width: 30 }, { header: "Type", width: 9 }, { header: "Category or box group", width: 18 },
@@ -273,8 +277,7 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
       { header: "Page views (all time)", width: 11 }, { header: "Stock now", width: 10 },
     ],
     prodRows, 10, 11, [6, 7, 8, 9, 10, 13, 14],
-  );
-  pa.getColumn(1).alignment = { horizontal: "center" };
+  ).getColumn(1).alignment = { horizontal: "center" };
 
   // Categories (boxes by their group).
   const cat = new Map<string, { products: Set<number>; orders: Set<number>; units: number; sales: number; cost: number }>();
@@ -288,7 +291,7 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
     c.sales += l.lineTotal;
     c.cost += costOf(l.productId, l.sku) * l.qty;
   }
-  shareSheet(
+  if (want("categories")) shareSheet(
     "Category analytics",
     [{ header: "Category", width: 26 }, { header: "Different products sold", width: 11 }, { header: "Orders", width: 8 }, { header: "Units", width: 8 }, { header: "Item sales ₹", width: 13, money: true }, { header: "Share of item sales", width: 10, pct: true }, { header: "Cost of goods ₹", width: 13, money: true }, { header: "Gross profit ₹", width: 13, money: true }, { header: "Margin", width: 9, pct: true }],
     [...cat.entries()]
@@ -316,7 +319,7 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
     }
     return [...m.entries()].sort((a, b) => b[1].revenue - a[1].revenue);
   };
-  shareSheet(
+  if (want("states")) shareSheet(
     "State analytics",
     [{ header: "State", width: 20 }, { header: "Orders", width: 8 }, { header: "Customers", width: 10 }, { header: "Units", width: 8 }, { header: "Item sales ₹", width: 13, money: true }, { header: "Discounts ₹", width: 12, money: true }, { header: "Shipping ₹", width: 11, money: true }, { header: "Revenue ₹", width: 13, money: true }, { header: "Share of revenue", width: 10, pct: true }, { header: "Average order ₹", width: 12, money: true }],
     place((o) => o.state || "Unknown").map(([k, v], i) => {
@@ -325,7 +328,7 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
     }),
     8, 9, [2, 3, 4, 5, 6, 7, 8],
   );
-  shareSheet(
+  if (want("cities")) shareSheet(
     "City analytics",
     [{ header: "City", width: 20 }, { header: "State", width: 18 }, { header: "Orders", width: 8 }, { header: "Customers", width: 10 }, { header: "Units", width: 8 }, { header: "Revenue ₹", width: 13, money: true }, { header: "Share of revenue", width: 10, pct: true }, { header: "Average order ₹", width: 12, money: true }],
     place((o) => `${(o.city || "Unknown").trim()}|${o.state || ""}`).map(([k, v], i) => {
@@ -349,17 +352,6 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
     if (at > c.last) ((c.last = at), (c.name = o.name), (c.city = o.city), (c.state = o.state));
     c.account ||= o.userId != null;
   }
-  const custRows = [...cust.entries()].sort((a, b) => b[1].revenue - a[1].revenue);
-  shareSheet(
-    "Customers",
-    [{ header: "Email", width: 28 }, { header: "Name", width: 20 }, { header: "City", width: 14 }, { header: "State", width: 14 }, { header: "Orders", width: 8 }, { header: "Units", width: 8 }, { header: "Revenue ₹", width: 13, money: true }, { header: "Share of revenue", width: 10, pct: true }, { header: "Average order ₹", width: 12, money: true }, { header: "First order", width: 12 }, { header: "Last order", width: 12 }, { header: "Ordered again", width: 9 }, { header: "Has an account", width: 9 }],
-    custRows.map(([email, c], i) => {
-      const n = i + 2;
-      return [email, c.name, c.city, c.state, c.orders, c.units, r(c.revenue), 0, { formula: `IF(E${n}=0,0,G${n}/E${n})`, result: c.orders ? r(c.revenue) / c.orders : 0 }, istDate(c.first).toISOString().slice(0, 10), istDate(c.last).toISOString().slice(0, 10), c.orders > 1 ? "Yes" : "No", c.account ? "Yes" : "Guest"];
-    }),
-    7, 8, [5, 6, 7],
-  );
-
   // Coupons and offers.
   const offer = new Map<string, { code: string; uses: number; discount: number; revenue: number }>();
   for (const o of counted)
@@ -370,7 +362,7 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
       v.discount += x.amount;
       v.revenue += o.total;
     }
-  shareSheet(
+  if (want("offers")) shareSheet(
     "Coupons and offers",
     [{ header: "Offer", width: 30 }, { header: "Coupon code", width: 16 }, { header: "Times used", width: 9 }, { header: "Discount given ₹", width: 14, money: true }, { header: "Share of discounts", width: 10, pct: true }, { header: "Revenue of those orders ₹", width: 15, money: true }, { header: "Average discount ₹", width: 12, money: true }],
     [...offer.entries()]
@@ -382,37 +374,27 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
     4, 5, [3, 4, 6],
   );
 
-  // Days, weekdays and hours.
+  // Weekdays and hours.
   const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const daily = new Map<string, { orders: number; units: number; revenue: number }>();
   const wk = DAYS.map(() => ({ orders: 0, revenue: 0 }));
   const hr = Array.from({ length: 24 }, () => ({ orders: 0, revenue: 0 }));
   for (const o of counted) {
     const t = istDate(o.paidAt);
-    const day = t.toISOString().slice(0, 10);
-    const v = daily.get(day) ?? daily.set(day, { orders: 0, units: 0, revenue: 0 }).get(day)!;
-    v.orders++;
-    v.units += unitsOf(o.id);
-    v.revenue += o.total;
     wk[t.getUTCDay()].orders++;
     wk[t.getUTCDay()].revenue += o.total;
     hr[t.getUTCHours()].orders++;
     hr[t.getUTCHours()].revenue += o.total;
   }
-  shareSheet(
-    "Daily sales",
-    [{ header: "Date", width: 12 }, { header: "Weekday", width: 11 }, { header: "Orders", width: 8 }, { header: "Units", width: 8 }, { header: "Revenue ₹", width: 13, money: true }, { header: "Share of revenue", width: 10, pct: true }],
-    [...daily.entries()].sort().map(([day, v]) => [day, DAYS[new Date(`${day}T00:00:00Z`).getUTCDay()], v.orders, v.units, r(v.revenue), 0]),
-    5, 6, [3, 4, 5],
-  );
   const whenCols = (h: string) => [{ header: h, width: 16 }, { header: "Orders", width: 8 }, { header: "Revenue ₹", width: 13, money: true }, { header: "Share of revenue", width: 10, pct: true }];
-  shareSheet("Weekdays", whenCols("Weekday (India time)"), DAYS.map((dname, i) => [dname, wk[i].orders, r(wk[i].revenue), 0]), 3, 4, [2, 3]);
-  shareSheet("Hours", whenCols("Hour (India time)"), hr.map((h, i) => [`${String(i).padStart(2, "0")}:00 to ${String(i).padStart(2, "0")}:59`, h.orders, r(h.revenue), 0]), 3, 4, [2, 3]);
+  if (want("times")) shareSheet("Weekdays", whenCols("Weekday (India time)"), DAYS.map((dname, i) => [dname, wk[i].orders, r(wk[i].revenue), 0]), 3, 4, [2, 3]);
+  if (want("times")) shareSheet("Hours", whenCols("Hour (India time)"), hr.map((h, i) => [`${String(i).padStart(2, "0")}:00 to ${String(i).padStart(2, "0")}:59`, h.orders, r(h.revenue), 0]), 3, 4, [2, 3]);
 
   // ── Summary (first sheet after Read me) ──
-  {
+  if (summary) {
     const T = months.length + 2; // totals row on Monthly sales
     const M = (col: string) => `'Monthly sales'!${col}${T}`;
+    // Linked to the Monthly sales totals when that sheet is in the file; plain numbers otherwise.
+    const F = (formula: string, result: number): number | ExcelJS.CellFormulaValue => (want("monthly") ? { formula, result } : result);
     const tot = [...byMonth.values()].reduce((a, s) => ({ orders: a.orders + s.orders, units: a.units + s.units, items: a.items + s.items, discount: a.discount + s.discount, shipping: a.shipping + s.shipping, cost: a.cost + s.cost, cancelled: a.cancelled + s.cancelled }), emptySales());
     const revenue = tot.items - tot.discount + tot.shipping;
     const profit = tot.items - tot.discount - tot.cost;
@@ -424,22 +406,22 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
     summary.addRow([`Summary: ${label}`]).font = { bold: true, size: 16, color: { argb: SHYAM } };
     summary.addRow([]);
     const rowsS: [string, number | string | ExcelJS.CellFormulaValue, string, string?][] = [
-      ["Orders (sales)", { formula: M("B"), result: tot.orders }, "Paid orders, not cancelled or refunded"],
-      ["Revenue ₹", { formula: M("G"), result: r(revenue) }, "What customers paid", MONEY],
-      ["Item sales ₹", { formula: M("D"), result: r(tot.items) }, "Before discounts", MONEY],
-      ["Discounts ₹", { formula: M("E"), result: r(tot.discount) }, "Coupons and offers", MONEY],
-      ["Shipping collected ₹", { formula: M("F"), result: r(tot.shipping) }, "", MONEY],
-      ["Cost of goods ₹", { formula: M("H"), result: r(tot.cost) }, "At today's cost prices", MONEY],
-      ["Gross profit ₹", { formula: M("I"), result: r(profit) }, "Item sales − Discounts − Cost of goods", MONEY],
-      ["Margin", { formula: `IF(${M("D")}-${M("E")}=0,0,${M("I")}/(${M("D")}-${M("E")}))`, result: tot.items - tot.discount ? profit / (tot.items - tot.discount) : 0 }, "Gross profit ÷ sales after discounts", "0.0%"],
-      ["Average order ₹", { formula: `IF(${M("B")}=0,0,${M("G")}/${M("B")})`, result: tot.orders ? r(revenue) / tot.orders : 0 }, "Revenue ÷ orders", MONEY],
-      ["Units sold", { formula: M("C"), result: tot.units }, "Boxes count as one unit each"],
+      ["Orders (sales)", F(M("B"), tot.orders), "Paid orders, not cancelled or refunded"],
+      ["Revenue ₹", F(M("G"), r(revenue)), "What customers paid", MONEY],
+      ["Item sales ₹", F(M("D"), r(tot.items)), "Before discounts", MONEY],
+      ["Discounts ₹", F(M("E"), r(tot.discount)), "Coupons and offers", MONEY],
+      ["Shipping collected ₹", F(M("F"), r(tot.shipping)), "", MONEY],
+      ["Cost of goods ₹", F(M("H"), r(tot.cost)), "At today's cost prices", MONEY],
+      ["Gross profit ₹", F(M("I"), r(profit)), "Item sales − Discounts − Cost of goods", MONEY],
+      ["Margin", F(`IF(${M("D")}-${M("E")}=0,0,${M("I")}/(${M("D")}-${M("E")}))`, tot.items - tot.discount ? profit / (tot.items - tot.discount) : 0), "Gross profit ÷ sales after discounts", "0.0%"],
+      ["Average order ₹", F(`IF(${M("B")}=0,0,${M("G")}/${M("B")})`, tot.orders ? r(revenue) / tot.orders : 0), "Revenue ÷ orders", MONEY],
+      ["Units sold", F(M("C"), tot.units), "Boxes count as one unit each"],
       ["Customers", cust.size, "Different email addresses that bought"],
       ["Customers who ordered again", repeat, `${cust.size ? Math.round((repeat / cust.size) * 100) : 0}% of customers`],
-      ["Cancelled or refunded orders", { formula: M("K"), result: tot.cancelled }, "Paid, then cancelled or refunded"],
-      ["Best product", topProduct, "By item sales (see Product analytics)"],
-      ["Best state", topState ? `${topState[0]} (${inrText(r(topState[1].revenue))})` : "None", "By revenue (see State analytics)"],
-      ["Best month", bestMonth && bestMonth[1].orders ? `${monthLabel(bestMonth[0])} (${inrText(r(bestMonth[1].items - bestMonth[1].discount))} after discounts)` : "None", "See Monthly sales"],
+      ["Cancelled or refunded orders", F(M("K"), tot.cancelled), "Paid, then cancelled or refunded"],
+      ["Best product", topProduct, want("products") ? "By item sales (see Product analytics)" : "By item sales"],
+      ["Best state", topState ? `${topState[0]} (${inrText(r(topState[1].revenue))})` : "None", want("states") ? "By revenue (see State analytics)" : "By revenue"],
+      ["Best month", bestMonth && bestMonth[1].orders ? `${monthLabel(bestMonth[0])} (${inrText(r(bestMonth[1].items - bestMonth[1].discount))} after discounts)` : "None", want("monthly") ? "See Monthly sales" : ""],
     ];
     for (const [k, v, note, fmt] of rowsS) {
       const row = summary.addRow([k, v, note]);
@@ -516,6 +498,7 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
     ]);
   };
 
+  if (want("stock")) {
   const whole = wb.addWorksheet("Product stock", { views: [{ state: "frozen", xSplit: 2, ySplit: 1 }] });
   whole.columns = stockHeader;
   styleHeader(whole);
@@ -528,7 +511,9 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
   }
   totalsRow(whole, 2, whole.rowCount, [12, 13, 14, 15]);
   for (const c of [13, 14, 15]) whole.getColumn(c).numFmt = MONEY;
+  }
 
+  if (want("stockMonthly")) {
   const monthly = wb.addWorksheet("Product by month", { views: [{ state: "frozen", xSplit: 3, ySplit: 1 }] });
   monthly.columns = [{ header: "Month", width: 10 }, ...stockHeader];
   styleHeader(monthly);
@@ -545,8 +530,10 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
   }
   for (const c of [14, 15, 16]) monthly.getColumn(c).numFmt = MONEY;
   monthly.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 16 } };
+  }
 
   // ── Ledger, orders, order lines ──
+  if (want("ledger")) {
   const ledger = wb.addWorksheet("Stock ledger", { views: [{ state: "frozen", ySplit: 1 }] });
   ledger.columns = [{ header: "Date (India)", width: 17 }, { header: "SKU", width: 22 }, { header: "Product", width: 30 }, { header: "What happened", width: 22 }, { header: "Change", width: 9 }, { header: "Stock after", width: 10 }, { header: "Order", width: 12 }, { header: "Note", width: 40 }];
   styleHeader(ledger);
@@ -555,7 +542,9 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
     ledger.addRow([istDate(m.createdAt).toISOString().slice(0, 16).replace("T", " "), p?.sku ?? "", p?.name ?? "", REASON[m.reason] ?? m.reason, m.delta, m.balanceAfter, m.orderNumber ?? "", m.note ?? ""]);
   }
   ledger.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 8 } };
+  }
 
+  if (want("orders")) {
   const ords = wb.addWorksheet("Orders", { views: [{ state: "frozen", ySplit: 1 }] });
   ords.columns = [{ header: "Paid (India)", width: 17 }, { header: "Order", width: 12 }, { header: "Status", width: 11 }, { header: "Counted as a sale", width: 10 }, { header: "Customer", width: 22 }, { header: "Email", width: 26 }, { header: "City", width: 14 }, { header: "State", width: 14 }, { header: "Item sales ₹", width: 12 }, { header: "Discounts ₹", width: 11 }, { header: "Shipping ₹", width: 11 }, { header: "Revenue ₹", width: 12 }, { header: "Coupon", width: 14 }];
   styleHeader(ords);
@@ -565,7 +554,9 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
   }
   for (const c of [9, 10, 11, 12]) ords.getColumn(c).numFmt = MONEY;
   ords.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 13 } };
+  }
 
+  if (want("lines")) {
   const lines = wb.addWorksheet("Order lines", { views: [{ state: "frozen", ySplit: 1 }] });
   lines.columns = [{ header: "Paid (India)", width: 17 }, { header: "Order", width: 12 }, { header: "Counted as a sale", width: 10 }, { header: "SKU", width: 22 }, { header: "Product", width: 30 }, { header: "Qty", width: 6 }, { header: "Unit price ₹", width: 11 }, { header: "Line total ₹", width: 12 }, { header: "Unit cost ₹", width: 11 }, { header: "Line cost ₹", width: 12 }, { header: "Line profit ₹", width: 12 }];
   styleHeader(lines);
@@ -578,7 +569,9 @@ export async function buildReportWorkbook(d: Data, label: string): Promise<Blob>
   }
   for (const c of [7, 8, 9, 10, 11]) lines.getColumn(c).numFmt = MONEY;
   lines.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 11 } };
+  }
 
+  me.getRow(sheetsRow).getCell(2).value = wb.worksheets.filter((w) => w.name !== "Read me").map((w) => w.name).join(" · ") || "None";
   for (const ws of wb.worksheets) ws.eachRow((row, n) => n > 1 && n % 2 === 0 && ws.name !== "Read me" && row.eachCell((c) => (c.fill ??= { type: "pattern", pattern: "solid", fgColor: { argb: PAPER } })));
   const buf = await wb.xlsx.writeBuffer();
   return new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });

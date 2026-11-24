@@ -897,7 +897,7 @@ export const adminRouter = router({
     };
   }),
   /** Raw numbers for the stock & sales workbook (built in the browser). Dates are ISO; money in paise. */
-  reportData: adminProcedure.input(z.object({ from: z.string().datetime(), to: z.string().datetime() })).query(async ({ ctx, input }) => {
+  reportData: adminProcedure.input(z.object({ from: z.string().datetime(), to: z.string().datetime(), sales: z.boolean().default(true), stock: z.boolean().default(true) })).query(async ({ ctx, input }) => {
     const from = new Date(input.from);
     const to = new Date(input.to);
     const counted = ["paid", "packed", "shipped", "delivered"] as const;
@@ -908,14 +908,15 @@ export const adminRouter = router({
         .leftJoin(categories, eq(categories.id, products.categoryId))
         .orderBy(products.kind, products.name),
       // Stock at the start: each product's balance after its last movement before the period.
-      ctx.db.execute(sql`select distinct on (product_id) product_id as "productId", balance_after as "balance" from stock_movements where created_at < ${from.toISOString()} order by product_id, created_at desc, id desc`),
-      ctx.db
+      // Only what the chosen sheets need is read (stock sheets need movements; sales and stock sheets need orders).
+      !input.stock ? Promise.resolve([]) : ctx.db.execute(sql`select distinct on (product_id) product_id as "productId", balance_after as "balance" from stock_movements where created_at < ${from.toISOString()} order by product_id, created_at desc, id desc`),
+      !input.stock ? Promise.resolve([]) : ctx.db
         .select({ id: stockMovements.id, productId: stockMovements.productId, delta: stockMovements.delta, balanceAfter: stockMovements.balanceAfter, reason: stockMovements.reason, note: stockMovements.note, createdAt: stockMovements.createdAt, orderNumber: orders.number })
         .from(stockMovements)
         .leftJoin(orders, eq(orders.id, stockMovements.orderId))
         .where(and(gte(stockMovements.createdAt, from), sql`${stockMovements.createdAt} < ${to.toISOString()}`))
         .orderBy(stockMovements.createdAt, stockMovements.id),
-      ctx.db
+      !input.sales ? Promise.resolve([]) : ctx.db
         .select()
         .from(orders)
         .where(and(isNotNull(orders.paidAt), gte(orders.paidAt, from), sql`${orders.paidAt} < ${to.toISOString()}`))

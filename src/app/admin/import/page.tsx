@@ -1,9 +1,10 @@
 "use client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Download, FileSpreadsheet, FileUp, LineChart } from "lucide-react";
-import { useState } from "react";
+import { BookOpen, Download, FileSpreadsheet, FileUp, LineChart, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Spinner } from "@/components/ui";
 import { columnsFor, type RawRow, type SheetName } from "@/lib/catalogue-sheet";
+import { REPORT_SHEETS, reportNeeds, type ReportSheet } from "@/lib/report-sheets";
 import { useTRPC } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
 import { Card, PageHeader, Tabs, useToast } from "../_ui";
@@ -299,15 +300,20 @@ function Downloads() {
   ];
   const [period, setPeriod] = useState("this-year");
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useSheetChoice();
   const p = PERIODS.find((x) => x.key === period)!;
 
   const report = async () => {
+    if (!picked.size) return;
     setBusy(true);
     try {
-      const data = await qc.fetchQuery({ ...trpc.admin.reportData.queryOptions({ from: p.from.toISOString(), to: p.to.toISOString() }), staleTime: 0 });
+      const need = reportNeeds(picked);
+      const data = await qc.fetchQuery({ ...trpc.admin.reportData.queryOptions({ from: p.from.toISOString(), to: p.to.toISOString(), ...need }), staleTime: 0 });
       const { buildReportWorkbook } = await import("@/lib/excel-report");
       const { downloadBlob } = await import("@/lib/excel-catalogue");
-      downloadBlob(await buildReportWorkbook(data, p.label), `vedicvisa-stock-and-sales-${p.key}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      downloadBlob(await buildReportWorkbook(data, p.label, picked), `vedicvisa-report-${p.key}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      setOpen(false);
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {
@@ -328,21 +334,147 @@ function Downloads() {
       <Card className="p-5">
         <LineChart className="mb-2 size-7 text-royal" aria-hidden />
         <h2 className="font-sans text-lg font-bold">Stock, sales and analytics report</h2>
-        <p className="mt-1 text-sm text-ink-soft">A summary, then sales and profit by month and year; analytics for every product, category, state, city, customer, coupon, day, weekday and hour; stock in and out for every product (whole period and by month); the stock ledger, orders and order lines. Totals and shares are live Excel formulas.</p>
-        <label className="mt-4 block text-sm font-bold" htmlFor="period">
-          Period
-        </label>
-        <select id="period" value={period} onChange={(e) => setPeriod(e.target.value)} className="field mt-1 h-10 !py-1 text-base sm:text-sm">
-          {PERIODS.map((x) => (
-            <option key={x.key} value={x.key}>
-              {x.label}
-            </option>
-          ))}
-        </select>
-        <Button className="mt-3" size="sm" onClick={report} disabled={busy}>
-          {busy ? <Spinner /> : <Download className="size-4" aria-hidden />} Download report
+        <p className="mt-1 text-sm text-ink-soft">A summary, then sales and profit by month and year; analytics for every product, category, state, city, coupon, weekday and hour; stock in and out for every product (whole period and by month); the stock ledger, orders and order lines. Totals and shares are live Excel formulas.</p>
+        <Button className="mt-4" size="sm" onClick={() => setOpen(true)}>
+          <Download className="size-4" aria-hidden /> Choose sheets and download
         </Button>
       </Card>
+      <ReportDialog open={open} onClose={() => !busy && setOpen(false)} title="Download the report">
+        <div className="space-y-5">
+          <section>
+            <h3 className="text-sm font-semibold">1. Period</h3>
+            <select aria-label="Period" value={period} onChange={(e) => setPeriod(e.target.value)} className="field mt-2 h-10 w-full !py-1 text-base sm:text-sm">
+              {PERIODS.map((x) => (
+                <option key={x.key} value={x.key}>
+                  {x.label}
+                </option>
+              ))}
+            </select>
+          </section>
+          <section>
+            <div className="flex items-baseline justify-between gap-3">
+              <h3 className="text-sm font-semibold">2. Sheets in the file</h3>
+              <div className="flex gap-3 text-sm">
+                <button type="button" className="text-royal hover:underline" onClick={() => setPicked(new Set(REPORT_SHEETS.map((s) => s.key)))}>
+                  All
+                </button>
+                <button type="button" className="text-royal hover:underline" onClick={() => setPicked(new Set())}>
+                  None
+                </button>
+              </div>
+            </div>
+            <p className="mt-1 text-sm text-ink-soft">Only the ticked sheets are worked out, so a smaller choice downloads faster.</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {SHEET_GROUPS.map((g) => {
+                const keys = REPORT_SHEETS.filter((s) => s.group === g).map((s) => s.key);
+                const on = keys.filter((k) => picked.has(k)).length;
+                return (
+                  <fieldset key={g} className="rounded-lg border border-line p-3">
+                    <legend className="sr-only">{g}</legend>
+                    <label className="flex items-center gap-2 border-b border-line pb-2 text-sm font-semibold">
+                      <input
+                        type="checkbox"
+                        className="size-4 accent-royal"
+                        checked={on === keys.length}
+                        ref={(el) => {
+                          if (el) el.indeterminate = on > 0 && on < keys.length;
+                        }}
+                        onChange={(e) => setPicked((s) => {
+                          const n = new Set(s);
+                          for (const k of keys) e.target.checked ? n.add(k) : n.delete(k);
+                          return n;
+                        })}
+                      />
+                      {g}
+                      <span className="ml-auto text-xs font-normal text-ink-soft">
+                        {on} of {keys.length}
+                      </span>
+                    </label>
+                    <div className="mt-2 space-y-1.5">
+                      {REPORT_SHEETS.filter((s) => s.group === g).map((s) => (
+                        <label key={s.key} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="size-4 accent-royal"
+                            checked={picked.has(s.key)}
+                            onChange={(e) => setPicked((prev) => {
+                              const n = new Set(prev);
+                              e.target.checked ? n.add(s.key) : n.delete(s.key);
+                              return n;
+                            })}
+                          />
+                          {s.label}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+        <div className="sticky bottom-0 -mx-5 mt-5 flex items-center justify-between gap-3 border-t border-line bg-paper px-5 py-3">
+          <span className="text-sm text-ink-soft">{picked.size ? `${picked.size} of ${REPORT_SHEETS.length} sheets` : "Tick at least one sheet"}</span>
+          <Button size="sm" onClick={report} disabled={busy || !picked.size}>
+            {busy ? <Spinner /> : <Download className="size-4" aria-hidden />} Download
+          </Button>
+        </div>
+      </ReportDialog>
     </div>
+  );
+}
+
+const SHEET_GROUPS = [...new Set(REPORT_SHEETS.map((s) => s.group))];
+const CHOICE_KEY = "vv-report-sheets";
+
+/** The ticked report sheets, remembered in this browser (all ticked the first time). */
+function useSheetChoice() {
+  const [picked, setPicked] = useState<Set<ReportSheet>>(() => new Set(REPORT_SHEETS.map((s) => s.key)));
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(CHOICE_KEY) ?? "null");
+      if (Array.isArray(saved)) setPicked(new Set(REPORT_SHEETS.map((s) => s.key).filter((k) => saved.includes(k))));
+    } catch {}
+  }, []);
+  const set = (next: Set<ReportSheet> | ((s: Set<ReportSheet>) => Set<ReportSheet>)) =>
+    setPicked((prev) => {
+      const n = typeof next === "function" ? next(prev) : next;
+      try {
+        localStorage.setItem(CHOICE_KEY, JSON.stringify([...n]));
+      } catch {}
+      return n;
+    });
+  return [picked, set] as const;
+}
+
+function ReportDialog({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
+  return (
+    <dialog
+      ref={ref}
+      aria-label={title}
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      className="m-auto max-h-[90svh] w-[min(40rem,calc(100vw-2rem))] overflow-y-auto rounded-xl bg-paper p-0 text-ink shadow-xl backdrop:bg-black/40"
+    >
+      <div className="px-5 pt-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <button type="button" onClick={onClose} className="grid size-8 place-items-center rounded-lg hover:bg-paper-2" aria-label="Close">
+            <X className="size-4" aria-hidden />
+          </button>
+        </div>
+        {children}
+      </div>
+    </dialog>
   );
 }
