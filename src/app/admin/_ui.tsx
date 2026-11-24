@@ -1,4 +1,5 @@
 "use client";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { createContext, useCallback, useContext, useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -171,3 +172,97 @@ export function NumberCell({ value, onSave, placeholder, width = "w-16" }: { val
   );
 }
 
+
+// ── Paging ──────────────────────────────────────────────
+export const PAGE_SIZES = [25, 50, 100] as const;
+
+/** Page numbers to show: first, last, and two either side of the current one, with gaps as null. */
+function pageList(page: number, pages: number): (number | null)[] {
+  const keep = new Set([1, pages, page - 1, page, page + 1].filter((p) => p >= 1 && p <= pages));
+  if (page <= 3) [2, 3, 4].forEach((p) => p <= pages && keep.add(p));
+  if (page >= pages - 2) [pages - 1, pages - 2, pages - 3].forEach((p) => p >= 1 && keep.add(p));
+  const sorted = [...keep].sort((a, b) => a - b);
+  const out: (number | null)[] = [];
+  sorted.forEach((p, i) => {
+    if (i && p - sorted[i - 1] > 1) out.push(null);
+    out.push(p);
+  });
+  return out;
+}
+
+/** "Showing 26–50 of 230" · page size · ‹ 1 … 4 5 6 … 10 ›. Phones show "Page 2 of 10" instead of numbers. */
+export function Pagination({ page, pageSize, total, onPage, onPageSize, noun = "rows" }: { page: number; pageSize: number; total: number; onPage: (p: number) => void; onPageSize?: (n: number) => void; noun?: string }) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  if (total === 0) return null;
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(total, page * pageSize);
+  const btn = "grid h-9 min-w-9 place-items-center rounded-[10px] px-2 text-sm tabular-nums transition-colors disabled:pointer-events-none disabled:opacity-40";
+  return (
+    <nav className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-sm" aria-label="Pages">
+      <div className="flex items-center gap-3 text-ink-soft">
+        <span>
+          Showing <b className="font-semibold text-ink tabular-nums">{from}–{to}</b> of <b className="font-semibold text-ink tabular-nums">{total}</b> {noun}
+        </span>
+        {onPageSize && (
+          <span className="hidden sm:inline-flex">
+            <PageSizeButtons value={pageSize} onChange={onPageSize} />
+          </span>
+        )}
+      </div>
+      {pages > 1 && (
+        <div className="flex items-center gap-1">
+          <button type="button" className={cn(btn, "hover:bg-paper-2")} onClick={() => onPage(page - 1)} disabled={page <= 1} aria-label="Previous page">
+            <ChevronLeft className="size-4" aria-hidden />
+          </button>
+          <span className="px-2 text-ink-soft sm:hidden">
+            Page {page} of {pages}
+          </span>
+          {pageList(page, pages).map((p, i) =>
+            p == null ? (
+              <span key={`gap${i}`} className="hidden px-1 text-ink-mute sm:inline">
+                …
+              </span>
+            ) : (
+              <button key={p} type="button" onClick={() => onPage(p)} aria-current={p === page ? "page" : undefined} className={cn(btn, "hidden sm:grid", p === page ? "bg-ink font-semibold text-white" : "hover:bg-paper-2")}>
+                {p}
+              </button>
+            ),
+          )}
+          <button type="button" className={cn(btn, "hover:bg-paper-2")} onClick={() => onPage(page + 1)} disabled={page >= pages} aria-label="Next page">
+            <ChevronRight className="size-4" aria-hidden />
+          </button>
+        </div>
+      )}
+    </nav>
+  );
+}
+
+function PageSizeButtons({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 rounded-[10px] border border-line p-0.5" role="group" aria-label="Rows per page">
+      {PAGE_SIZES.map((n) => (
+        <button key={n} type="button" onClick={() => onChange(n)} aria-pressed={n === value} className={cn("h-7 rounded-lg px-2 text-xs tabular-nums", n === value ? "bg-paper-2 font-semibold text-ink" : "text-ink-soft hover:text-ink")}>
+          {n}
+        </button>
+      ))}
+      <span className="pr-1.5 pl-1 text-xs text-ink-mute">per page</span>
+    </span>
+  );
+}
+
+/** Paging for a list already in the browser. Back to page 1 when `resetOn` (search, tab…) changes. */
+export function usePaged<T>(list: T[], resetOn = "", initialSize = 50) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(initialSize);
+  const [seen, setSeen] = useState(resetOn);
+  if (seen !== resetOn) {
+    setSeen(resetOn);
+    setPage(1);
+  }
+  const pages = Math.max(1, Math.ceil(list.length / pageSize));
+  const p = Math.min(page, pages);
+  return {
+    rows: list.slice((p - 1) * pageSize, p * pageSize),
+    bar: { page: p, pageSize, total: list.length, onPage: setPage, onPageSize: (n: number) => (setPageSize(n), setPage(1)) },
+  };
+}

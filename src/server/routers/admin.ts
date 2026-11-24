@@ -446,7 +446,8 @@ export const adminRouter = router({
         maxTotal: z.number().int().min(0).optional(),
         offer: z.enum(["coupon", "discount", "none"]).optional(),
         sort: z.enum(["new", "old", "high", "low"]).default("new"),
-        limit: z.number().int().min(1).max(1000).default(100),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(50),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -465,7 +466,7 @@ export const adminRouter = router({
       );
       const order = { new: desc(orders.createdAt), old: asc(orders.createdAt), high: desc(orders.total), low: asc(orders.total) }[input.sort];
       const [list, [sum]] = await Promise.all([
-        ctx.db.select().from(orders).where(where).orderBy(order, desc(orders.id)).limit(input.limit),
+        ctx.db.select().from(orders).where(where).orderBy(order, desc(orders.id)).limit(input.pageSize).offset((input.page - 1) * input.pageSize),
         ctx.db.select({ count: sql<number>`count(*)`.mapWith(Number), total: sql<number>`coalesce(sum(${orders.total}), 0)`.mapWith(Number) }).from(orders).where(where),
       ]);
       const items = list.length

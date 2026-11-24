@@ -8,7 +8,7 @@ import { Select } from "@/components/select";
 import type { Visibility } from "@/db/schema";
 import { useTRPC } from "@/lib/trpc/client";
 import { adminLabel, cn, inr } from "@/lib/utils";
-import { Card, ConfirmButton, NumberCell, PageHeader, Tabs, td, th, useToast } from "../_ui";
+import { Card, ConfirmButton, NumberCell, PageHeader, Pagination, Tabs, td, th, usePaged, useToast } from "../_ui";
 
 type Tab = "all" | "public" | "hidden" | "internal" | "pinned";
 
@@ -33,6 +33,7 @@ export default function ProductsPage() {
   const list = all
     .filter((p) => (tab === "all" ? true : tab === "pinned" ? p.pinRank != null : p.visibility === tab))
     .filter((p) => !q || `${p.name} ${p.adminName ?? ""} ${p.sku} ${p.categoryName ?? ""}`.toLowerCase().includes(q.toLowerCase()));
+  const paged = usePaged(list, `${tab}|${q}`);
   const count = (t: Tab) => all.filter((p) => (t === "pinned" ? p.pinRank != null : p.visibility === t)).length;
 
   return (
@@ -74,7 +75,7 @@ export default function ProductsPage() {
             <tbody>
               {isLoading && <tr><td className={td} colSpan={10}><PageLoader /></td></tr>}
               {!isLoading && list.length === 0 && <tr><td className={`${td} py-10 text-center text-ink-mute`} colSpan={10}>No products match.</td></tr>}
-              {list.map((p) => {
+              {paged.rows.map((p) => {
                 const margin = p.price ? Math.round(((p.price - p.cost) / p.price) * 100) : 0;
                 return (
                   <tr key={p.id} className="border-b border-line last:border-0 hover:bg-sky/30">
@@ -120,6 +121,7 @@ export default function ProductsPage() {
             </tbody>
           </table>
         </div>
+        <Pagination {...paged.bar} noun="products" />
       </Card>
     </>
   );

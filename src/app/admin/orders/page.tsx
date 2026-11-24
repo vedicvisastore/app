@@ -6,10 +6,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { StatusPill } from "@/app/(store)/account/status-pill";
 import { Select } from "@/components/select";
-import { Button, PageLoader, Spinner } from "@/components/ui";
+import { PageLoader, Spinner } from "@/components/ui";
 import { useTRPC } from "@/lib/trpc/client";
 import { adminLabel, cn, customerHref, formatDate, INDIAN_STATES, inr, ORDER_STATUS_LABEL } from "@/lib/utils";
-import { Card, Field, MoneyInput, PageHeader, Tabs, td, th } from "../_ui";
+import { Card, Field, MoneyInput, PAGE_SIZES, PageHeader, Pagination, Tabs, td, th } from "../_ui";
 
 const STATUS_TABS = ["all", "paid", "packed", "shipped", "delivered", "cancelled", "pending_payment"] as const;
 type S = (typeof STATUS_TABS)[number];
@@ -78,7 +78,6 @@ const SORTS = [
 ];
 const STATE_OPTIONS = [{ value: "", label: "All states" }, ...INDIAN_STATES.map((s) => ({ value: s, label: s }))];
 const FILTER_KEYS = ["date", "from", "to", "state", "product", "offer", "min", "max"] as const;
-const PAGE = 100;
 /** Every control on this page is one height (40px) with the form-field edge, so the bar and the filters line up. */
 const CTRL = "!min-h-10 h-10 !py-1 text-base sm:text-sm";
 
@@ -95,6 +94,7 @@ function Orders() {
   const setParams = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(params.toString());
     for (const [k, v] of Object.entries(patch)) v ? next.set(k, v) : next.delete(k);
+    if (!("page" in patch)) next.delete("page"); // any other change starts again at page 1
     const s = next.toString();
     router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
   };
@@ -109,7 +109,8 @@ function Orders() {
 
   const active = FILTER_KEYS.filter((k) => get(k) && !(k === "from" || k === "to")).length;
   const [open, setOpen] = useState(active > 0);
-  const [limit, setLimit] = useState(PAGE);
+  const page = Math.max(1, Number(get("page")) || 1);
+  const pageSize = PAGE_SIZES.find((n) => n === Number(get("per"))) ?? 50;
   const range = dateRange(get("date"), get("from"), get("to"));
   const input = {
     status: status === "all" ? undefined : status,
@@ -122,7 +123,8 @@ function Orders() {
     minTotal: get("min") ? Number(get("min")) : undefined,
     maxTotal: get("max") ? Number(get("max")) : undefined,
     sort,
-    limit,
+    page,
+    pageSize,
   };
   const { data, isLoading, isFetching } = useQuery({ ...trpc.admin.orders.queryOptions(input), placeholderData: keepPreviousData });
   const dash = useQuery(trpc.admin.dashboard.queryOptions());
@@ -249,12 +251,18 @@ function Orders() {
             </tbody>
           </table>
         </div>
-        {data && data.count > list.length && (
-          <div className="border-t border-line p-3 text-center">
-            <Button size="sm" variant="outline" onClick={() => setLimit((l) => Math.min(1000, l + PAGE))} disabled={isFetching}>
-              Show more ({data.count - list.length} left)
-            </Button>
-          </div>
+        {data && (
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={data.count}
+            noun="orders"
+            onPage={(p) => {
+              setParams({ page: p > 1 ? String(p) : null });
+              document.querySelector("main")?.scrollIntoView({ block: "start" });
+            }}
+            onPageSize={(n) => setParams({ per: n === 50 ? null : String(n) })}
+          />
         )}
       </Card>
     </>

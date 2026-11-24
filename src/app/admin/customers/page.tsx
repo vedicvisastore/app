@@ -7,7 +7,7 @@ import { useState } from "react";
 import { PageLoader } from "@/components/ui";
 import { useTRPC } from "@/lib/trpc/client";
 import { customerHref, formatDate, inr } from "@/lib/utils";
-import { Card, PageHeader, td, th } from "../_ui";
+import { Card, PageHeader, Pagination, td, th, usePaged } from "../_ui";
 
 export default function CustomersPage() {
   const trpc = useTRPC();
@@ -16,6 +16,7 @@ export default function CustomersPage() {
   const { data, isLoading } = useQuery(trpc.admin.customers.queryOptions({ q: q.trim() || undefined }));
   const list = data ?? [];
   const buyers = list.filter((c) => c.orders > 0).length;
+  const paged = usePaged(list, q);
 
   return (
     <>
@@ -34,7 +35,7 @@ export default function CustomersPage() {
           <>
             {/* Phones: cards */}
             <ul className="divide-y divide-line md:hidden">
-              {list.map((c) => (
+              {paged.rows.map((c) => (
                 <li key={c.email}>
                   <Link href={customerHref(c.email)} className="block px-4 py-3 active:bg-sky">
                     <span className="flex items-baseline justify-between gap-3">
@@ -66,7 +67,7 @@ export default function CustomersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {list.map((c) => (
+                  {paged.rows.map((c) => (
                     <tr key={c.email} className="cursor-pointer border-b border-line last:border-0 hover:bg-sky/40" onClick={() => router.push(customerHref(c.email))}>
                       <td className={td}>
                         <Link href={customerHref(c.email)} className="font-bold text-royal" onClick={(e) => e.stopPropagation()}>
@@ -92,6 +93,7 @@ export default function CustomersPage() {
               </table>
             </div>
             {list.length === 0 && <p className="px-4 py-10 text-center text-sm text-ink-mute">No customers match.</p>}
+            <Pagination {...paged.bar} noun="people" />
           </>
         )}
       </Card>
