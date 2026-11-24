@@ -279,30 +279,94 @@ export function BlockPanel({ block, design, setDesign, onClose }: { block: Picke
   );
 }
 
+/**
+ * Font picker: a button showing the chosen font in itself; opens a list right below it with search, language and
+ * style filters, and every font previewed in its own face (with Hindi sample for fonts that have Hindi letters).
+ */
 function FontSelect({ value, onChange, placeholder }: { value: FontKey | null; onChange: (v: FontKey | null) => void; placeholder?: string }) {
-  // Grouped by language first (fonts with Hindi letters, then English-only), then by style.
-  const groups = (Object.keys(FONT_LANGS) as (keyof typeof FONT_LANGS)[]).flatMap((lang) =>
-    (Object.keys(FONT_KINDS) as FontKind[])
-      .map((kind) => ({ label: `${FONT_LANGS[lang]} · ${FONT_KINDS[kind]}`, keys: FONT_KEYS.filter((k) => FONTS[k].lang === lang && FONTS[k].kind === kind) }))
-      .filter((g) => g.keys.length),
-  );
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [lang, setLang] = useState<"all" | keyof typeof FONT_LANGS>("all");
+  const [kind, setKind] = useState<"all" | FontKind>("all");
+  const face = (k: FontKey) => FONTS[k].stack.replace("var(--font-rozha), ", "");
+  const t = q.trim().toLowerCase();
+  const list = FONT_KEYS.filter((k) => (lang === "all" || FONTS[k].lang === lang) && (kind === "all" || FONTS[k].kind === kind) && (!t || `${FONTS[k].label} ${(FONTS[k] as { hi?: string }).hi ?? ""} ${FONT_KINDS[FONTS[k].kind]}`.toLowerCase().includes(t)));
+  // Same order as before: Hindi + English first, then by style.
+  const order = (k: FontKey) => (FONTS[k].lang === "deva" ? 0 : 100) + Object.keys(FONT_KINDS).indexOf(FONTS[k].kind);
+  list.sort((x, y) => order(x) - order(y));
+
   return (
-    <select value={value ?? ""} onChange={(e) => onChange((e.target.value || null) as FontKey | null)} className="field h-10 !py-1 text-base sm:text-sm">
-      {placeholder && <option value="">{placeholder}</option>}
-      {groups.map((g) => (
-        <optgroup key={g.label} label={g.label}>
-          {g.keys.map((k) => {
-            const f: { label: string; stack: string; hi?: string } = FONTS[k];
-            // Fonts with Hindi letters show their name in Hindi too; each option is drawn in its own font where the browser allows.
-            return (
-              <option key={k} value={k} style={{ fontFamily: f.stack.replace("var(--font-rozha), ", "") }}>
-                {f.hi ? `${f.label} · ${f.hi}` : f.label}
-              </option>
-            );
-          })}
-        </optgroup>
-      ))}
-    </select>
+    <div>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className={cn("flex w-full items-center gap-3 rounded-xl border bg-paper px-3 py-2 text-left", open ? "border-royal ring-1 ring-royal" : "border-line-strong hover:border-ink")}>
+        <span className="min-w-0 flex-1">
+          {value ? (
+            <>
+              <span className="block truncate text-lg leading-tight" style={{ fontFamily: face(value) }}>
+                {FONTS[value].label.replace(" (current)", "")}
+              </span>
+              <span className="block truncate text-xs text-ink-mute">
+                {FONT_LANGS[FONTS[value].lang]} · {FONT_KINDS[FONTS[value].kind]}
+              </span>
+            </>
+          ) : (
+            <span className="text-sm text-ink-soft">{placeholder}</span>
+          )}
+        </span>
+        <span className="shrink-0 text-xs font-bold text-royal">{open ? "Close" : "Change"}</span>
+      </button>
+
+      {open && (
+        <div className="mt-2 rounded-2xl border border-line bg-paper p-2 shadow-lift">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search fonts" aria-label="Search fonts" className="field mb-2 h-10 !py-1 text-base sm:text-sm" />
+          <div className="mb-1.5 flex gap-1">
+            {([["all", "All"], ["deva", "Hindi + English"], ["latin", "English only"]] as const).map(([v, l]) => (
+              <button key={v} type="button" onClick={() => setLang(v)} className={cn("rounded-full px-2.5 py-1 text-xs font-bold", lang === v ? "bg-ink text-white" : "bg-sky text-ink-soft")}>
+                {l}
+              </button>
+            ))}
+          </div>
+          <div className="no-scrollbar mb-2 flex gap-1 overflow-x-auto">
+            {([["all", "Any style"], ...Object.entries(FONT_KINDS).map(([k, l]) => [k, l.split(" (")[0]])] as [string, string][]).map(([v, l]) => (
+              <button key={v} type="button" onClick={() => setKind(v as "all" | FontKind)} className={cn("shrink-0 rounded-full border px-2.5 py-1 text-xs whitespace-nowrap", kind === v ? "border-royal text-royal" : "border-line text-ink-soft")}>
+                {l}
+              </button>
+            ))}
+          </div>
+          <ul className="max-h-[50vh] space-y-1 overflow-y-auto pr-1" role="listbox" aria-label="Fonts">
+            {placeholder && (
+              <li>
+                <button type="button" role="option" aria-selected={!value} onClick={() => { onChange(null); setOpen(false); }} className={cn("w-full rounded-xl px-3 py-2 text-left text-sm", !value ? "bg-royal/10 font-bold text-royal" : "hover:bg-sky")}>
+                  {placeholder}
+                </button>
+              </li>
+            )}
+            {list.map((k) => {
+              const f = FONTS[k] as { label: string; hi?: string; lang: "deva" | "latin" };
+              const on = value === k;
+              return (
+                <li key={k}>
+                  <button type="button" role="option" aria-selected={on} onClick={() => { onChange(k); setOpen(false); }} className={cn("w-full rounded-xl border px-3 py-2 text-left transition-colors", on ? "border-royal bg-royal/10" : "border-transparent hover:border-line hover:bg-paper-2")}>
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="truncate text-xl leading-tight" style={{ fontFamily: face(k) }}>
+                        {f.label.replace(" (current)", "")}
+                      </span>
+                      {on && <span className="shrink-0 text-xs font-bold text-royal">Chosen</span>}
+                    </span>
+                    <span className="mt-0.5 block truncate text-base text-ink-soft" style={{ fontFamily: face(k) }}>
+                      {f.lang === "deva" ? `${f.hi ?? ""} · भक्ति बॉक्स · Bhakti Box ₹1,500` : "Bhakti Box · Daily Rituals ₹1,500"}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] text-ink-mute">
+                      {FONT_LANGS[f.lang]} · {FONT_KINDS[FONTS[k].kind]}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+            {list.length === 0 && <li className="px-3 py-4 text-sm text-ink-mute">No font matches.</li>}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 
