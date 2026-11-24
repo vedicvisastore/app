@@ -5,6 +5,7 @@ import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { StatusPill } from "@/app/(store)/account/status-pill";
 import { Button, Spinner , PageLoader } from "@/components/ui";
+import { Select } from "@/components/select";
 import type { OrderStatus } from "@/db/schema";
 import { PRIMARY_ACTION } from "@/lib/order-machine";
 import { useTRPC } from "@/lib/trpc/client";
@@ -186,10 +187,13 @@ export default function AdminOrder({ params }: { params: Promise<{ id: string }>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Location (optional)"><input value={loc} onChange={(e) => setLoc(e.target.value)} className="field" /></Field>
                 <Field label="Change status (optional)">
-                  <select value={status} onChange={(e) => setStatus(e.target.value as OrderStatus)} className="field">
-                    <option value="">{o.allowedNext.length ? `Keep ${ORDER_STATUS_LABEL[o.status].toLowerCase()}` : "Final status, can't change"}</option>
-                    {o.allowedNext.map((s) => <option key={s} value={s}>{ORDER_STATUS_LABEL[s]}</option>)}
-                  </select>
+                  <Select
+                    value={status}
+                    onChange={(v) => setStatus(v as OrderStatus | "")}
+                    disabled={!o.allowedNext.length}
+                    placeholder={o.allowedNext.length ? `Keep ${ORDER_STATUS_LABEL[o.status].toLowerCase()}` : "Final status, can't change"}
+                    options={[{ value: "", label: `Keep ${ORDER_STATUS_LABEL[o.status].toLowerCase()}` }, ...o.allowedNext.map((s) => ({ value: s, label: ORDER_STATUS_LABEL[s] }))]}
+                  />
                 </Field>
               </div>
               {(status === "cancelled" || status === "refunded") && o.paidAt && o.status !== "pending_payment" && (

@@ -4,12 +4,19 @@ import { ArrowUpToLine, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { ButtonLink, Media, ProductArt, Spinner , PageLoader } from "@/components/ui";
+import { Select } from "@/components/select";
 import type { Visibility } from "@/db/schema";
 import { useTRPC } from "@/lib/trpc/client";
 import { adminLabel, cn, inr } from "@/lib/utils";
 import { Card, ConfirmButton, NumberCell, PageHeader, Tabs, td, th, useToast } from "../_ui";
 
 type Tab = "all" | "public" | "hidden" | "internal" | "pinned";
+
+const VIS_OPTIONS: { value: Visibility; label: string }[] = [
+  { value: "public", label: "In store" },
+  { value: "hidden", label: "Hidden" },
+  { value: "internal", label: "Packing / internal" },
+];
 
 export default function ProductsPage() {
   const trpc = useTRPC();
@@ -101,11 +108,7 @@ export default function ProductsPage() {
                     </td>
                     <td className={td}><NumberCell value={p.boost} width="w-14" onSave={(v) => quick.mutate({ id: p.id, boost: v ?? 0 })} /></td>
                     <td className={td}>
-                      <select value={p.visibility} onChange={(e) => quick.mutate({ id: p.id, visibility: e.target.value as Visibility })} className="h-8 rounded-lg border border-line bg-paper px-2 text-sm">
-                        <option value="public">In store</option>
-                        <option value="hidden">Hidden</option>
-                        <option value="internal">Packing / internal</option>
-                      </select>
+                      <Select look="compact" aria-label={`Visibility of ${p.name}`} value={p.visibility} onChange={(v: Visibility) => quick.mutate({ id: p.id, visibility: v })} menuMinWidth={180} options={VIS_OPTIONS} />
                     </td>
                     <td className={`${td} text-right whitespace-nowrap`}>
                       <Link href={`/admin/products/${p.id}`} className="mr-3 font-bold text-royal">Edit</Link>

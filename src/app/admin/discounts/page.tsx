@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
 import { Button, Spinner , PageLoader } from "@/components/ui";
+import { Select } from "@/components/select";
 import type { Discount, DiscountKind, DiscountType } from "@/db/schema";
 import { discountState } from "@/lib/discount-status";
 import { useTRPC } from "@/lib/trpc/client";
@@ -145,11 +146,15 @@ export default function DiscountsPage() {
               )}
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Type">
-                  <select value={d.type} onChange={(e) => setD({ ...d, type: e.target.value as DiscountType, value: e.target.value === "percent" ? 10 : e.target.value === "flat" ? 10000 : 0 })} className="field">
-                    <option value="percent">Percent off</option>
-                    <option value="flat">Flat ₹ off</option>
-                    {d.kind !== "sale" && <option value="free_shipping">Free shipping</option>}
-                  </select>
+                  <Select
+                    value={d.type}
+                    onChange={(t: DiscountType) => setD({ ...d, type: t, value: t === "percent" ? 10 : t === "flat" ? 10000 : 0 })}
+                    options={[
+                      { value: "percent", label: "Percent off" },
+                      { value: "flat", label: "Flat ₹ off" },
+                      ...(d.kind !== "sale" ? [{ value: "free_shipping" as const, label: "Free shipping" }] : []),
+                    ]}
+                  />
                 </Field>
                 {d.type === "percent" && <Field label="Percent"><input type="number" min={1} max={90} value={d.value} onChange={(e) => setD({ ...d, value: Number(e.target.value) || 0 })} className="field" /></Field>}
                 {d.type === "flat" && <Field label="Amount"><MoneyInput value={d.value} onChange={(v) => setD({ ...d, value: v ?? 0 })} /></Field>}
@@ -179,14 +184,14 @@ export default function DiscountsPage() {
                     return <button key={c.id} type="button" onClick={() => setD({ ...d, categoryIds: on ? d.categoryIds.filter((x) => x !== c.id) : [...d.categoryIds, c.id] })} className={cn("rounded-full border px-2.5 py-0.5 text-xs font-normal", on ? "border-royal bg-royal text-white" : "border-line text-ink-soft")}>{c.name}</button>;
                   })}
                 </div>
-                <select
-                  className="field mt-2"
+                <Select
+                  className="mt-2"
                   value=""
-                  onChange={(e) => e.target.value && setD({ ...d, productIds: [...new Set([...d.productIds, Number(e.target.value)])] })}
-                >
-                  <option value="">Add a specific product…</option>
-                  {products.data?.filter((p) => !d.productIds.includes(p.id)).map((p) => <option key={p.id} value={p.id}>{adminLabel(p)}</option>)}
-                </select>
+                  placeholder="Add a specific product…"
+                  searchable
+                  onChange={(v) => setD({ ...d, productIds: [...new Set([...d.productIds, Number(v)])] })}
+                  options={(products.data ?? []).filter((p) => !d.productIds.includes(p.id)).map((p) => ({ value: String(p.id), label: adminLabel(p) }))}
+                />
                 {d.productIds.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {d.productIds.map((id) => (

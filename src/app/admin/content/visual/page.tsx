@@ -4,6 +4,7 @@ import { ArrowLeft, ExternalLink, ImageUp, Monitor, MousePointerClick, Paintbrus
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button, PageLoader, Spinner } from "@/components/ui";
+import { Select } from "@/components/select";
 import { CONTENT_GROUPS } from "@/content/defaults";
 import { DEFAULT_IMAGES, IMAGE_SLOTS, isImageKey, type ImageKey } from "@/content/images";
 import { useUploadFile } from "../../_upload";
@@ -328,14 +329,16 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
         <Link href="/admin/content" className="inline-flex h-9 items-center gap-1 rounded-full px-2 text-sm font-bold text-ink-soft hover:text-royal">
           <ArrowLeft className="size-4" aria-hidden /> <span className="hidden sm:inline">Back</span>
         </Link>
-        <select value={pages.some((p) => p.path === path) ? path : ""} onChange={(e) => e.target.value && go(e.target.value)} className="h-9 min-w-0 rounded-full border border-line bg-paper px-3 text-base sm:text-sm" aria-label="Page to edit">
-          {!pages.some((p) => p.path === path) && <option value="">{shownPath}</option>}
-          {pages.map((p) => (
-            <option key={p.path} value={p.path}>
-              {p.label}
-            </option>
-          ))}
-        </select>
+        <Select
+          look="pill"
+          className="h-9 border-line"
+          aria-label="Page to edit"
+          value={pages.some((p) => p.path === path) ? path : ""}
+          placeholder={shownPath}
+          menuMinWidth={220}
+          onChange={(v) => v && go(v)}
+          options={pages.map((p) => ({ value: p.path, label: p.label }))}
+        />
         <div className="flex rounded-full bg-sky p-0.5" role="radiogroup" aria-label="What tapping the page does">
           {(
             [

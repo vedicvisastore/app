@@ -7,6 +7,7 @@ import { useEffect, useReducer, useState } from "react";
 import { useCart } from "@/components/cart/cart-context";
 import { useQuote } from "@/components/cart/cart-drawer";
 import { CouponField, Totals } from "@/components/cart/summary";
+import { Select } from "@/components/select";
 import { Button, ButtonLink, Container, Media, ProductArt, Spinner } from "@/components/ui";
 import type { Address } from "@/db/schema";
 import { useTRPC } from "@/lib/trpc/client";
@@ -76,6 +77,8 @@ function checkoutReducer(state: Phase, event: Event): Phase {
       return state.name === "done" ? state : { name: "idle", error: event.error };
   }
 }
+
+const STATE_OPTIONS = INDIAN_STATES.map((s) => ({ value: s, label: s }));
 
 export function CheckoutForm({ email, addresses, mock, adminTest = false }: { email: string; addresses: Address[]; mock: boolean; adminTest?: boolean }) {
   const trpc = useTRPC();
@@ -250,10 +253,7 @@ export function CheckoutForm({ email, addresses, mock, adminTest = false }: { em
               </div>
               <div className="sm:col-span-2">
                 <label className="label" htmlFor="state">State</label>
-                <select id="state" required autoComplete="address-level1" className="field" value={form.state} onChange={set("state")}>
-                  <option value="">Choose state</option>
-                  {INDIAN_STATES.map((s) => <option key={s}>{s}</option>)}
-                </select>
+                <Select id="state" required autoComplete="address-level1" value={form.state} onChange={(v) => setForm((f) => ({ ...f, state: v }))} placeholder="Choose state" options={STATE_OPTIONS} />
               </div>
               <label className="flex items-center gap-2 text-sm text-ink-soft sm:col-span-2">
                 <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} className="size-4 accent-royal" />

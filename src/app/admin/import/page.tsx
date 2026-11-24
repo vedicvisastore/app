@@ -2,6 +2,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BookOpen, Download, FileSpreadsheet, FileUp, LineChart, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Select } from "@/components/select";
 import { Button, Spinner } from "@/components/ui";
 import { columnsFor, type RawRow, type SheetName } from "@/lib/catalogue-sheet";
 import { REPORT_SHEETS, reportNeeds, type ReportSheet } from "@/lib/report-sheets";
@@ -343,13 +344,7 @@ function Downloads() {
         <div className="space-y-5">
           <section>
             <h3 className="text-sm font-semibold">1. Period</h3>
-            <select aria-label="Period" value={period} onChange={(e) => setPeriod(e.target.value)} className="field mt-2 h-10 w-full !py-1 text-base sm:text-sm">
-              {PERIODS.map((x) => (
-                <option key={x.key} value={x.key}>
-                  {x.label}
-                </option>
-              ))}
-            </select>
+            <Select aria-label="Period" className="mt-2" value={period} onChange={setPeriod} options={PERIODS.map((x) => ({ value: x.key, label: x.label }))} />
           </section>
           <section>
             <div className="flex items-baseline justify-between gap-3">

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Spinner , PageLoader } from "@/components/ui";
+import { Select } from "@/components/select";
 import { useTRPC } from "@/lib/trpc/client";
 import { cn, inr } from "@/lib/utils";
 import { Card, PageHeader, Stat, Tabs } from "../../_ui";
@@ -71,18 +72,18 @@ export default function ProductAnalyticsPage() {
                 <Search className="size-4 text-ink-mute" aria-hidden />
                 <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a product" className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none" />
               </label>
-              <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)} className="h-10 rounded-full border border-line bg-paper px-3 text-sm" aria-label="Type">
-                <option value="all">Boxes and items</option>
-                <option value="bundle">Boxes and sets only</option>
-                <option value="single">Single items only</option>
-              </select>
-              <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} className="h-10 rounded-full border border-line bg-paper px-3 text-sm" aria-label="Sort by">
-                {SORTS.map((s) => (
-                  <option key={s.key} value={s.key}>
-                    Sort: {s.label}
-                  </option>
-                ))}
-              </select>
+              <Select
+                look="pill"
+                aria-label="Type"
+                value={kind}
+                onChange={setKind}
+                options={[
+                  { value: "all", label: "Boxes and items" },
+                  { value: "bundle", label: "Boxes and sets only" },
+                  { value: "single", label: "Single items only" },
+                ]}
+              />
+              <Select look="pill" aria-label="Sort by" value={sort} onChange={setSort} menuMinWidth={180} options={SORTS.map((s) => ({ value: s.key, label: `Sort: ${s.label}` }))} />
             </div>
 
             <div className="hidden grid-cols-[minmax(0,2.4fr)_repeat(4,minmax(0,1fr))_1.5rem] gap-3 border-b border-line px-2 pb-2 text-xs font-bold text-ink-soft md:grid">

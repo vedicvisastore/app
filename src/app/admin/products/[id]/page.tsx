@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, use, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Media, ProductArt, Spinner , PageLoader } from "@/components/ui";
+import { Select } from "@/components/select";
 import type { ProductKind, Visibility } from "@/db/schema";
 import { useTRPC } from "@/lib/trpc/client";
 import { adminLabel, cn, inr, slugify } from "@/lib/utils";
@@ -343,17 +344,22 @@ function Editor({ id }: { id: string }) {
           <Card className="space-y-4 p-5">
             <h2 className="font-sans text-lg font-bold">Organise</h2>
             <Field label="Visibility">
-              <select value={f.visibility} onChange={(e) => set("visibility", e.target.value as Visibility)} className="field">
-                <option value="public">In store</option>
-                <option value="hidden">Hidden (draft)</option>
-                <option value="internal">Packing / internal (never sold alone)</option>
-              </select>
+              <Select
+                value={f.visibility}
+                onChange={(v: Visibility) => set("visibility", v)}
+                options={[
+                  { value: "public", label: "In store" },
+                  { value: "hidden", label: "Hidden (draft)" },
+                  { value: "internal", label: "Packing / internal (never sold alone)" },
+                ]}
+              />
             </Field>
             <Field label="Category">
-              <select value={f.categoryId ?? ""} onChange={(e) => set("categoryId", e.target.value ? Number(e.target.value) : null)} className="field">
-                <option value="">No category</option>
-                {cats.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <Select
+                value={f.categoryId != null ? String(f.categoryId) : ""}
+                onChange={(v) => set("categoryId", v ? Number(v) : null)}
+                options={[{ value: "", label: "No category" }, ...(cats.data ?? []).map((c) => ({ value: String(c.id), label: c.name }))]}
+              />
             </Field>
             {f.kind === "bundle" && (
               <Field label="Box group" hint="Boxes in the same group are shown together, e.g. Bhakti Boxes, Japa Sets">

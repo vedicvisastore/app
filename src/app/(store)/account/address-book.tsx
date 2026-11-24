@@ -4,6 +4,7 @@ import { MapPin, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, Spinner } from "@/components/ui";
+import { Select } from "@/components/select";
 import type { Address } from "@/db/schema";
 import { useTRPC } from "@/lib/trpc/client";
 import { cn, INDIAN_STATES } from "@/lib/utils";
@@ -49,10 +50,7 @@ function AddressForm({ initial, onDone, onCancel }: { initial: Form; onDone: () 
       <label className="block"><span className="label">City / district</span><input required autoComplete="address-level2" className="field" value={f.city} onChange={set("city")} /></label>
       <label className="block sm:col-span-2">
         <span className="label">State</span>
-        <select required autoComplete="address-level1" className="field" value={f.state} onChange={set("state")}>
-          <option value="">Choose state</option>
-          {INDIAN_STATES.map((s) => <option key={s}>{s}</option>)}
-        </select>
+        <Select required autoComplete="address-level1" value={f.state} onChange={(v) => setF((s) => ({ ...s, state: v }))} placeholder="Choose state" options={STATE_OPTIONS} />
       </label>
       <label className="flex items-center gap-2 text-sm sm:col-span-2">
         <input type="checkbox" className="size-4 accent-royal" checked={f.isDefault} onChange={(e) => setF((s) => ({ ...s, isDefault: e.target.checked }))} />
@@ -66,6 +64,8 @@ function AddressForm({ initial, onDone, onCancel }: { initial: Form; onDone: () 
     </form>
   );
 }
+
+const STATE_OPTIONS = INDIAN_STATES.map((s) => ({ value: s, label: s }));
 
 export function AddressBook({ addresses }: { addresses: Address[] }) {
   const trpc = useTRPC();

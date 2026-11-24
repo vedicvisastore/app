@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { use, useState } from "react";
 import { Button, Spinner , PageLoader } from "@/components/ui";
+import { Select } from "@/components/select";
 import type { StockReason } from "@/db/schema";
 import { useTRPC } from "@/lib/trpc/client";
 import { cn, formatDate, inr } from "@/lib/utils";
@@ -88,20 +89,22 @@ export default function StockLedger({ params }: { params: Promise<{ id: string }
                 <input required inputMode="numeric" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value.replace(/\D/g, "") })} className="field tabular-nums" />
               </Field>
               <Field label="Reason">
-                <select value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value as Form["reason"] })} className="field">
-                  {f.direction === "in" ? (
-                    <>
-                      <option value="restock">Restock</option>
-                      <option value="return">Customer return</option>
-                      <option value="adjustment">Count corrected</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="damaged">Damaged / lost</option>
-                      <option value="adjustment">Count corrected</option>
-                    </>
-                  )}
-                </select>
+                <Select
+                  value={f.reason}
+                  onChange={(v) => setF({ ...f, reason: v })}
+                  options={
+                    f.direction === "in"
+                      ? [
+                          { value: "restock", label: "Restock" },
+                          { value: "return", label: "Customer return" },
+                          { value: "adjustment", label: "Count corrected" },
+                        ]
+                      : [
+                          { value: "damaged", label: "Damaged / lost" },
+                          { value: "adjustment", label: "Count corrected" },
+                        ]
+                  }
+                />
               </Field>
             </div>
             {f.direction === "in" && f.reason === "restock" && (
