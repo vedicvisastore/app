@@ -204,7 +204,14 @@ export function start() {
       probe.remove();
       post({ type: "vv:tokens", colors });
     } else if (m.type === "vv:selectBlock") {
-      selectBlock(m.key && m.key in BLOCKS ? (m.key as BlockKey) : null);
+      const key = m.key && m.key in BLOCKS ? (m.key as BlockKey) : null;
+      selectBlock(key);
+      // Picked from the editor's lists: show it, and tell the editor its colours and how many there are.
+      const el = key ? document.querySelector(BLOCKS[key].selector) : null;
+      if (key && el) {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        post({ type: "vv:blockInfo", key, count: document.querySelectorAll(BLOCKS[key].selector).length, colors: colorsOf(el) });
+      }
     } else if (m.type === "vv:set") {
       // Words with {placeholders} need the server to fill them in; the editor reloads the page for those.
       if (/\{\w+\}/.test(m.value)) return;

@@ -1,14 +1,15 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, ImageUp, Monitor, MousePointerClick, Paintbrush, Palette, Pencil, RotateCcw, Search, Smartphone, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, ImageUp, Monitor, MousePointerClick, Paintbrush, Pencil, RotateCcw, Search, SlidersHorizontal, Smartphone, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, PageLoader, Spinner } from "@/components/ui";
 import { CONTENT_GROUPS } from "@/content/defaults";
 import { DEFAULT_IMAGES, IMAGE_SLOTS, isImageKey, type ImageKey } from "@/content/images";
 import { useUploadFile } from "../../_upload";
-import { DesignPanel, BlockPanel, ALL_FONTS_HREF, type PickedBlock } from "./design-panel";
-import { cleanDesign, designCss, designFontsHref, type Design } from "@/lib/design";
+import { BlockPanel, DesignSection, DetailHeader, PartsList, ALL_FONTS_HREF, type PickedBlock } from "./design-panel";
+import { SearchResults, buildIndex, TABS, type Tab } from "./editor-search";
+import { BLOCKS, cleanDesign, designCss, designFontsHref, type BlockKey, type Design } from "@/lib/design";
 import { useTRPC } from "@/lib/trpc/client";
 import { cn, storeHref } from "@/lib/utils";
 import { useToast } from "../../_ui";
@@ -90,19 +91,17 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
   const designChanged = designJson !== designBase;
   const [tokens, setTokens] = useState<Record<string, string>>({});
   const [block, setBlock] = useState<PickedBlock | null>(null);
-  const [designOpen, setDesignOpen] = useState(false);
+  // One panel: tabs for everything, a search across everything, and a detail view when something is picked.
+  const [tab, setTab] = useState<Tab>("text");
+  const [group, setGroup] = useState<string>(CONTENT_GROUPS[0].key);
+  const [focus, setFocus] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState(true); // phones: the panel is a sheet that can be put away
+  const [q, setQ] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  // "Find any text": every line, including ones that only show sometimes (sold out, empty cart, login steps).
-  const [finding, setFinding] = useState(false);
-  const [q, setQ] = useState("");
-  const found = useMemo(() => {
-    const t = q.trim().toLowerCase();
-    if (!t) return [];
-    return FIELDS.filter((f) => `${f.label} ${f.groupLabel} ${f.value} ${edits[f.key] ?? ""}`.toLowerCase().includes(t)).slice(0, 40);
-  }, [q, edits]);
   const current = useMemo(() => clean(edits), [edits]);
   const draftJson = JSON.stringify(current);
+  const searchIndex = useMemo(() => buildIndex(FIELDS, edits), [edits]);
   // Pictures: what is saved, and what the owner has picked since.
   const [imgBase, setImgBase] = useState(() => fullImages(savedImages));
   const [imgs, setImgs] = useState(() => fullImages(savedImages));
@@ -110,7 +109,6 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
   const upload = useUploadFile();
   const [uploading, setUploading] = useState(false);
   const unsaved = draftJson !== base || imgsChanged.length > 0 || designChanged;
-  const changedCount = Object.keys(current).length;
 
   const storeOrigin = useMemo(() => {
     try {
@@ -132,14 +130,22 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
         send({ type: "vv:mode", mode });
         send({ type: "vv:design", css: designCss(designRef.current), fonts: designFontsHref(designRef.current) });
         send({ type: "vv:tokens" });
+        // A part picked from a list on another page: point at it once that page has loaded.
+        if (blockRef.current) send({ type: "vv:selectBlock", key: blockRef.current.key });
         // Unsaved pictures aren't on the server yet: put them back into every page that loads.
         for (const k of imgsChangedRef.current) send({ type: "vv:img", key: k, src: imgsRef.current[k] });
-      } else if ((m.type === "vv:edit" && m.key && BY_KEY.has(m.key)) || (m.type === "vv:image" && m.key && isImageKey(m.key))) setSelected(m.key!);
+      } else if ((m.type === "vv:edit" && m.key && BY_KEY.has(m.key)) || (m.type === "vv:image" && m.key && isImageKey(m.key))) {
+        setBlock(null);
+        setSelected(m.key!);
+        setPanelOpen(true);
+      }
       else if (m.type === "vv:open" && m.href?.startsWith("/admin/")) window.open(m.href, "_blank", "noopener");
       else if (m.type === "vv:tokens" && m.colors) setTokens(m.colors);
+      else if (m.type === "vv:blockInfo" && m.key) setBlock((b) => (b && b.key === m.key ? { ...b, count: m.count ?? null, colors: (m.colors ?? {}) as PickedBlock["colors"] } : b));
       else if (m.type === "vv:block" && m.key) {
         setSelected(null);
-        setBlock({ key: m.key as PickedBlock["key"], count: m.count ?? 1, colors: (m.colors ?? {}) as PickedBlock["colors"] });
+        setBlock({ key: m.key as PickedBlock["key"], count: m.count ?? null, colors: (m.colors ?? {}) as PickedBlock["colors"] });
+        setPanelOpen(true);
       }
     };
     window.addEventListener("message", onMsg);
@@ -152,6 +158,8 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
   imgsChangedRef.current = imgsChanged;
   const designRef = useRef(design);
   designRef.current = design;
+  const blockRef = useRef(block);
+  blockRef.current = block;
   useEffect(() => send({ type: "vv:mode", mode }), [mode, send]);
   // Every design change is shown in the frame straight away.
   useEffect(() => send({ type: "vv:design", css: designCss(design), fonts: designFontsHref(design) }), [designJson, send]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -250,6 +258,19 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
     setFrameKey((k) => k + 1);
   };
 
+  /** Open a part's style panel and show it in the preview, going to a page where it appears if needed. */
+  const goToPart = (key: BlockKey) => {
+    const want = (BLOCKS[key] as { page?: string }).page;
+    const target = want === "product" ? pages.find((p) => p.path.startsWith("/p/"))?.path : want;
+    setSelected(null);
+    setMode("style");
+    setBlock({ key, count: null, colors: {} });
+    setPanelOpen(true);
+    const here = shownPath.split("?")[0];
+    if (target && !(want === "product" ? here.startsWith("/p/") : here === target)) go(target);
+    else send({ type: "vv:selectBlock", key });
+  };
+
   const field = selected ? BY_KEY.get(selected) : null;
   const slotKey = selected && isImageKey(selected) ? selected : null;
   const value = field ? (edits[field.key] ?? field.value) : "";
@@ -294,11 +315,8 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
             </button>
           ))}
         </div>
-        <button type="button" onClick={() => setDesignOpen((o) => !o)} aria-pressed={designOpen} className={cn("inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-bold xl:hidden", designOpen ? "bg-ink text-white" : "text-ink-soft hover:bg-sky")}>
-          <Palette className="size-4" aria-hidden /> Design
-        </button>
-        <button type="button" onClick={() => { setSelected(null); setFinding(true); }} className="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-sky lg:hidden" aria-label="Find any text">
-          <Search className="size-4" aria-hidden />
+        <button type="button" onClick={() => setPanelOpen((o) => !o)} aria-pressed={panelOpen} className={cn("inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-bold lg:hidden", panelOpen ? "bg-ink text-white" : "text-ink-soft hover:bg-sky")}>
+          <SlidersHorizontal className="size-4" aria-hidden /> Panel
         </button>
         <a href={storeHref(shownPath)} target="_blank" rel="noreferrer" className="hidden h-9 items-center gap-1 rounded-full px-2 text-sm text-ink-soft hover:text-royal sm:inline-flex">
           <ExternalLink className="size-4" aria-hidden /> Open
@@ -316,44 +334,27 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
         </div>
       </div>
 
-      {/* Font samples in the design panel need the fonts themselves (admin page only). */}
+      {/* Font samples need the fonts themselves (admin page only). */}
       <link rel="stylesheet" href={ALL_FONTS_HREF} />
       <div className="relative flex min-h-0 flex-1">
-        {/* Design: colours, fonts and look for the whole store (left column on wide screens, a sheet otherwise) */}
-        <aside
-          className={cn(
-            "z-20 flex-col overflow-y-auto border-line bg-paper",
-            "xl:flex xl:w-[300px] xl:shrink-0 xl:border-r",
-            designOpen ? "max-xl:absolute max-xl:inset-y-0 max-xl:left-0 max-xl:flex max-xl:w-[min(340px,92vw)] max-xl:border-r max-xl:shadow-float" : "max-xl:hidden",
-          )}
-        >
-          <DesignPanel design={design} setDesign={setDesign} tokens={tokens} onClose={() => setDesignOpen(false)} />
-        </aside>
         {/* The store */}
         <Frame device={device} frameKey={frameKey} path={path} frame={frame} loading={loading} onLoad={() => setLoading(false)} />
 
-        {/* Editing panel: a side panel on wide screens, a sheet from the bottom on phones */}
+        {/* The one editing panel: search, tabs, and a detail view for whatever is picked */}
         <aside
+          data-editor-panel
           className={cn(
-            "z-10 flex flex-col border-line bg-paper",
-            "max-lg:absolute max-lg:inset-x-0 max-lg:bottom-0 max-lg:max-h-[60%] max-lg:rounded-t-3xl max-lg:border-t max-lg:shadow-float max-lg:pb-[env(safe-area-inset-bottom,0px)]",
-            "lg:w-[380px] lg:shrink-0 lg:border-l",
-            !field && !slotKey && !finding && !block && "max-lg:hidden",
+            "z-10 flex min-h-0 flex-col border-line bg-paper",
+            "max-lg:absolute max-lg:inset-x-0 max-lg:bottom-0 max-lg:h-[62%] max-lg:rounded-t-3xl max-lg:border-t max-lg:shadow-float max-lg:pb-[env(safe-area-inset-bottom,0px)]",
+            "lg:w-[400px] lg:shrink-0 lg:border-l",
+            !panelOpen && "max-lg:hidden",
           )}
         >
           {block ? (
             <BlockPanel block={block} design={design} setDesign={setDesign} onClose={() => setBlock(null)} />
           ) : slotKey ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-              <div className="mb-3 flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-xs font-bold tracking-[0.06em] text-ink-mute uppercase">Picture · {IMAGE_SLOTS[slotKey].where}</p>
-                  <p className="font-bold">{IMAGE_SLOTS[slotKey].label}</p>
-                </div>
-                <button type="button" onClick={() => setSelected(null)} className="grid size-9 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-sky" aria-label="Close">
-                  <X className="size-4" />
-                </button>
-              </div>
+              <DetailHeader eyebrow={`Picture · ${IMAGE_SLOTS[slotKey].where}`} title={IMAGE_SLOTS[slotKey].label} onBack={() => setSelected(null)} />
               <div className="grid place-items-center rounded-xl bg-paper-2 p-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={imgs[slotKey]} alt="" className="max-h-56 w-auto max-w-full rounded-lg object-contain" />
@@ -368,21 +369,10 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
                   <RotateCcw className="size-3.5" aria-hidden /> Use the original picture
                 </button>
               )}
-              <Button size="sm" variant="outline" className="mt-4 self-start" onClick={() => setSelected(null)}>
-                Done
-              </Button>
             </div>
           ) : field ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-              <div className="mb-3 flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-xs font-bold tracking-[0.06em] text-ink-mute uppercase">{field.groupLabel}</p>
-                  <p className="font-bold">{field.label}</p>
-                </div>
-                <button type="button" onClick={() => setSelected(null)} className="grid size-9 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-sky" aria-label="Close">
-                  <X className="size-4" />
-                </button>
-              </div>
+              <DetailHeader eyebrow={field.groupLabel} title={field.label} onBack={() => setSelected(null)} />
               <textarea
                 autoFocus
                 value={value}
@@ -403,77 +393,98 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
                   </button>
                 </div>
               )}
-              <Button size="sm" variant="outline" className="mt-4 self-start" onClick={() => setSelected(null)}>
-                Done
-              </Button>
             </div>
           ) : (
-            <div className={cn("flex-1 overflow-y-auto p-4", !finding && "hidden lg:block")}>
-              <div className="mb-5 flex items-center gap-2">
-                <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full border border-line bg-paper-2 px-4 focus-within:border-royal">
+            <>
+              {/* Search everything: text, pictures, colours, fonts, look and parts */}
+              <div className="border-b border-line p-3">
+                <label className="flex h-11 items-center gap-2 rounded-full border border-line bg-paper-2 px-4 focus-within:border-royal">
                   <Search className="size-4 shrink-0 text-ink-mute" aria-hidden />
-                  <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find any text" className="h-full min-w-0 flex-1 bg-transparent text-base outline-none" aria-label="Find any text" />
+                  <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search text, colours, fonts, parts…" className="h-full min-w-0 flex-1 bg-transparent text-base outline-none sm:text-sm" aria-label="Search the editor" />
+                  {q && (
+                    <button type="button" onClick={() => setQ("")} className="text-ink-mute" aria-label="Clear search">
+                      <X className="size-4" />
+                    </button>
+                  )}
                 </label>
-                {finding && (
-                  <button type="button" onClick={() => setFinding(false)} className="grid size-10 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-sky lg:hidden" aria-label="Close">
-                    <X className="size-4" />
-                  </button>
+                {!q && (
+                  <nav className="mt-3 grid grid-cols-6 gap-1" aria-label="Editor sections">
+                    {TABS.map((t) => (
+                      <button key={t.key} type="button" onClick={() => setTab(t.key)} aria-current={tab === t.key ? "page" : undefined} className={cn("flex flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-bold transition-colors", tab === t.key ? "bg-ink text-white" : "text-ink-soft hover:bg-sky")}>
+                        <t.icon className="size-[18px]" aria-hidden />
+                        {t.label}
+                      </button>
+                    ))}
+                  </nav>
                 )}
               </div>
-              {q.trim() ? (
-                <ul className="space-y-1">
-                  {found.map((f) => (
-                    <li key={f.key}>
-                      <button type="button" onClick={() => setSelected(f.key)} className="w-full rounded-lg px-2 py-1.5 text-left text-sm hover:bg-sky">
-                        <span className="block text-xs text-ink-mute">{f.groupLabel}</span>
-                        <span className="block font-bold">{f.label}</span>
-                        <span className="block truncate text-ink-soft">{edits[f.key] ?? f.value}</span>
-                      </button>
-                    </li>
-                  ))}
-                  {found.length === 0 && <li className="text-sm text-ink-mute">No text matches.</li>}
-                </ul>
-              ) : (
-              <>
-              <p className="font-bold">How it works</p>
-              <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm text-ink-soft">
-                <li>Every text you can change has a dotted outline. Tap it to edit it here.</li>
-                <li>It changes in the page as you type. Nothing changes for shoppers until you press Save.</li>
-                <li>Tap the logo or a painting to change the picture.</li>
-                <li>Tap a product to edit it, or the banner, ribbon or Shop menu to open their own editors.</li>
-                <li>Switch to Style, then tap any part of the page (a section, the menu, a card) to change its colours, fonts and corners. Cards change together.</li>
-                <li>Colours, fonts and the overall look of the whole store are in the Design panel.</li>
-                <li>Switch to Browse to follow links and visit other pages.</li>
-              </ol>
-              <p className="mt-6 font-bold">Pictures</p>
-              <ul className="mt-2 grid grid-cols-3 gap-2">
-                {IMAGE_KEYS.map((k) => (
-                  <li key={k}>
-                    <button type="button" onClick={() => setSelected(k)} className="w-full rounded-lg p-1 text-left hover:bg-sky" title={IMAGE_SLOTS[k].where}>
-                      <span className="grid aspect-square place-items-center overflow-hidden rounded-md bg-paper-2">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={imgs[k]} alt="" className="max-h-full max-w-full object-contain" />
-                      </span>
-                      <span className="mt-1 block truncate text-xs">{IMAGE_SLOTS[k].label}{imgsChanged.includes(k) && " •"}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-6 font-bold">Changed text ({changedCount})</p>
-              <ul className="mt-2 space-y-1">
-                {Object.keys(current).map((k) => (
-                  <li key={k}>
-                    <button type="button" onClick={() => setSelected(k)} className="w-full rounded-lg px-2 py-1.5 text-left text-sm hover:bg-sky">
-                      <span className="block font-bold">{BY_KEY.get(k)?.label}</span>
-                      <span className="block truncate text-ink-soft">{current[k]}</span>
-                    </button>
-                  </li>
-                ))}
-                {changedCount === 0 && <li className="text-sm text-ink-mute">Nothing changed yet.</li>}
-              </ul>
-              </>
-              )}
-            </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                {q.trim() ? (
+                  <SearchResults
+                    items={searchIndex}
+                    q={q}
+                    onPick={(it) => {
+                      setQ("");
+                      if (it.kind === "text" || it.kind === "picture") setSelected(it.key);
+                      else if (it.kind === "part") goToPart(it.key as BlockKey);
+                      else {
+                        setTab(it.kind);
+                        setFocus(`${it.key}:${Date.now()}`);
+                      }
+                    }}
+                  />
+                ) : tab === "text" ? (
+                  <>
+                    <div className="no-scrollbar -mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4">
+                      {CONTENT_GROUPS.map((g) => {
+                        const n = FIELDS.filter((f) => f.group === g.key && current[f.key]).length;
+                        return (
+                          <button key={g.key} type="button" onClick={() => setGroup(g.key)} className={cn("shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold whitespace-nowrap", group === g.key ? "border-royal bg-royal/10 text-royal" : "border-line text-ink-soft hover:border-ink")}>
+                            {g.label}
+                            {n > 0 && <span className="ml-1 text-gulal">•{n}</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <ul className="space-y-0.5">
+                      {FIELDS.filter((f) => f.group === group).map((f) => (
+                        <li key={f.key}>
+                          <button type="button" onClick={() => setSelected(f.key)} className="w-full rounded-lg px-2 py-2 text-left hover:bg-sky">
+                            <span className="flex items-center gap-1.5 text-xs text-ink-mute">
+                              {f.label}
+                              {current[f.key] && <span className="size-1.5 rounded-full bg-gulal" aria-label="Changed" />}
+                            </span>
+                            <span className="block truncate text-sm">{edits[f.key] || f.value}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : tab === "pictures" ? (
+                  <ul className="grid grid-cols-2 gap-3">
+                    {IMAGE_KEYS.map((k) => (
+                      <li key={k}>
+                        <button type="button" onClick={() => setSelected(k)} className="w-full rounded-xl border border-line p-2 text-left hover:border-royal">
+                          <span className="grid aspect-square place-items-center overflow-hidden rounded-lg bg-paper-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={imgs[k]} alt="" className="max-h-full max-w-full object-contain" />
+                          </span>
+                          <span className="mt-1.5 block truncate text-sm font-bold">
+                            {IMAGE_SLOTS[k].label}
+                            {imgsChanged.includes(k) && <span className="ml-1 text-gulal">•</span>}
+                          </span>
+                          <span className="block truncate text-xs text-ink-mute">{IMAGE_SLOTS[k].where}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : tab === "parts" ? (
+                  <PartsList design={design} onPick={goToPart} />
+                ) : (
+                  <DesignSection part={tab} design={design} setDesign={setDesign} tokens={tokens} focus={focus?.split(":")[0] ?? null} onPart={goToPart} />
+                )}
+              </div>
+            </>
           )}
         </aside>
       </div>

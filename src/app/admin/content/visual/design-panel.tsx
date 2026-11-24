@@ -1,5 +1,6 @@
 "use client";
-import { RotateCcw, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   BLOCK_PROP_LABEL,
   BLOCKS,
@@ -23,14 +24,16 @@ export const ALL_FONTS_HREF = `https://fonts.googleapis.com/css2?${Object.values
   .filter(Boolean)
   .join("&")}&display=swap`;
 
-export type PickedBlock = { key: BlockKey; count: number; colors: { bg?: string; text?: string; heading?: string } };
+export type PickedBlock = { key: BlockKey; count: number | null; colors: { bg?: string; text?: string; heading?: string } };
 
 type SetDesign = (fn: (d: Design) => Design) => void;
 
 const FONT_KEYS = Object.keys(FONTS) as FontKey[];
 
-// ── Whole-store design ──────────────────────────────────────
-export function DesignPanel({ design, setDesign, tokens, onClose }: { design: Design; setDesign: SetDesign; tokens: Record<string, string>; onClose: () => void }) {
+// ── Whole-store design, one section at a time (Colours / Fonts / Look tabs) ──
+export type DesignPart = "colours" | "fonts" | "look";
+
+export function DesignSection({ part, design, setDesign, tokens, focus, onPart }: { part: DesignPart; design: Design; setDesign: SetDesign; tokens: Record<string, string>; focus?: string | null; onPart: (key: BlockKey) => void }) {
   const setColor = (t: ColorToken, v: string | null) =>
     setDesign((d) => {
       const colors = { ...d.colors };
@@ -46,88 +49,151 @@ export function DesignPanel({ design, setDesign, tokens, onClose }: { design: De
       return { ...d, fonts };
     });
   const setLook = (k: LookKey, v: string) => setDesign((d) => ({ ...d, look: { ...d.look, [k]: v } }));
-  const anything = Object.keys(design.colors ?? {}).length + Object.keys(design.fonts ?? {}).length + Object.keys(design.look ?? {}).length > 0;
+  // A search result opens its tab and points at the matching row.
+  useEffect(() => {
+    if (!focus) return;
+    const el = document.getElementById(`vv-row-${focus}`);
+    el?.scrollIntoView({ block: "center", behavior: "smooth" });
+    el?.animate([{ backgroundColor: "color-mix(in oklab, var(--color-gold) 35%, transparent)" }, { backgroundColor: "transparent" }], { duration: 1400 });
+  }, [focus, part]);
 
-  return (
-    <div className="p-4">
-      <div className="mb-1 flex items-center justify-between">
-        <p className="font-display text-xl">Design</p>
-        <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-sky xl:hidden" aria-label="Close design">
-          <X className="size-4" />
-        </button>
-      </div>
-      <p className="mb-5 text-xs text-ink-soft">For the whole store. Every place that uses a colour or font changes with it. To change one part only, switch to Style and tap it.</p>
-
-      <Section title="Colours">
-        <ul className="space-y-2">
+  if (part === "colours")
+    return (
+      <div>
+        <p className="mb-3 text-xs text-ink-soft">The whole store uses these. Lighter and darker shades follow each one. Choosing a new theme in Themes clears them.</p>
+        <ul className="space-y-1">
           {COLOR_ROLES.map((r) => {
             const own = design.colors?.[r.token];
             const value = own ?? tokens[r.token] ?? "#000000";
             return (
-              <li key={r.token} className="flex items-center gap-3">
+              <li key={r.token} id={`vv-row-${r.token}`} className="flex items-center gap-3 rounded-xl p-1.5">
                 <label className="relative size-10 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-line shadow-lift" style={{ background: value }}>
                   <input type="color" value={value} onChange={(e) => setColor(r.token, e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label={r.label} />
                 </label>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-bold">{r.label}</span>
-                  <span className="block truncate text-xs text-ink-mute">{r.hint}</span>
+                  <span className="mt-0.5 flex items-center gap-2">
+                    <HexInput value={value} onChange={(v) => setColor(r.token, v)} label={r.label} />
+                    <span className="min-w-0 truncate text-xs text-ink-mute" title={r.hint}>{r.hint}</span>
+                  </span>
                 </span>
                 {own && <ResetBtn label={`Reset ${r.label}`} onClick={() => setColor(r.token, null)} />}
               </li>
             );
           })}
         </ul>
-        <p className="mt-2 text-[11px] text-ink-mute">Lighter and darker shades of each colour follow it automatically. Choosing a new theme in Themes clears these.</p>
-      </Section>
+        {Object.keys(design.colors ?? {}).length > 0 && (
+          <button type="button" onClick={() => setDesign((d) => ({ ...d, colors: {} }))} className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-royal">
+            <RotateCcw className="size-3.5" aria-hidden /> All colours back to the theme
+          </button>
+        )}
+      </div>
+    );
 
-      <Section title="Fonts">
+  if (part === "fonts") {
+    const usage = fontUsage(design);
+    return (
+      <div className="space-y-6">
         <div className="space-y-4">
+          <p className="text-xs text-ink-soft">The two fonts of the whole store. Fonts marked हिन्दी also cover Devanagari.</p>
           {FONT_ROLES.map((r) => {
             const cur = design.fonts?.[r.role] ?? (r.fallback as FontKey);
             return (
-              <div key={r.role}>
+              <div key={r.role} id={`vv-row-${r.role}`} className="rounded-xl p-1.5">
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-sm font-bold">{r.label}</span>
                   {design.fonts?.[r.role] && <ResetBtn label={`Reset ${r.label}`} onClick={() => setFont(r.role, null)} />}
                 </div>
                 <FontSelect value={cur} onChange={(v) => setFont(r.role, v === r.fallback ? null : v)} />
-                <p className="mt-1.5 truncate rounded-lg bg-paper-2 px-3 py-2 text-lg" style={{ fontFamily: FONTS[cur].stack.replace("var(--font-rozha), ", "") }}>
-                  Bhakti Box भक्ति ₹1,500
-                </p>
                 <p className="mt-1 text-[11px] text-ink-mute">{r.hint}</p>
               </div>
             );
           })}
         </div>
-      </Section>
 
-      <Section title="Look">
-        <div className="space-y-4">
-          {(Object.keys(LOOK) as LookKey[]).map((k) => {
-            const opts = LOOK[k].options as Record<string, string>;
-            const cur = (design.look?.[k] as string | undefined) ?? LOOK[k].default;
-            return (
-              <div key={k}>
-                <p className="text-sm font-bold">{LOOK[k].label}</p>
-                <p className="mb-1.5 text-[11px] text-ink-mute">{LOOK[k].hint}</p>
-                <div className="flex rounded-full bg-sky p-0.5" role="radiogroup" aria-label={LOOK[k].label}>
-                  {Object.entries(opts).map(([v, label]) => (
-                    <button key={v} type="button" role="radio" aria-checked={cur === v} onClick={() => setLook(k, v)} className={cn("h-8 flex-1 rounded-full px-2 text-xs font-bold", cur === v ? "bg-paper text-ink shadow-lift" : "text-ink-soft")}>
-                      {label}
-                    </button>
+        {/* Every font on the store right now, and exactly where: tap a place to go to it */}
+        <div>
+          <p className="mb-2 text-[0.68rem] font-bold tracking-[0.12em] text-ink-mute uppercase">Fonts in use ({usage.length})</p>
+          <ul className="space-y-3">
+            {usage.map((u) => (
+              <li key={u.font} className="rounded-2xl border border-line p-3">
+                <p className="truncate text-2xl leading-tight" style={{ fontFamily: FONTS[u.font].stack.replace("var(--font-rozha), ", "") }}>
+                  {FONTS[u.font].label.replace(" (current)", "")}
+                </p>
+                <p className="truncate text-sm text-ink-soft" style={{ fontFamily: FONTS[u.font].stack.replace("var(--font-rozha), ", "") }}>
+                  Bhakti Box भक्ति ₹1,500
+                </p>
+                <p className="mt-2 text-[0.68rem] font-bold tracking-wider text-ink-mute uppercase">Used for</p>
+                <ul className="mt-1 space-y-1">
+                  {u.roles.map((r) => (
+                    <li key={r} className="text-sm">{r}</li>
                   ))}
-                </div>
-              </div>
-            );
-          })}
+                  {u.parts.map((p) => (
+                    <li key={`${p.key}-${p.what}`}>
+                      <button type="button" onClick={() => onPart(p.key)} className="flex w-full items-center gap-2 rounded-lg bg-paper-2 px-2.5 py-1.5 text-left text-sm hover:bg-sky">
+                        <span className="flex-1">
+                          <b>{BLOCKS[p.key].label}</b> <span className="text-ink-soft">· {p.what}</span>
+                        </span>
+                        <ArrowRight className="size-4 shrink-0 text-royal" aria-label="Go there" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
         </div>
-      </Section>
+      </div>
+    );
+  }
 
-      {anything && (
-        <button type="button" onClick={() => setDesign((d) => ({ blocks: d.blocks }))} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-royal">
-          <RotateCcw className="size-3.5" aria-hidden /> Reset colours, fonts and look to the theme
-        </button>
-      )}
+  return (
+    <div className="space-y-4">
+      {(Object.keys(LOOK) as LookKey[]).map((k) => {
+        const opts = LOOK[k].options as Record<string, string>;
+        const cur = (design.look?.[k] as string | undefined) ?? LOOK[k].default;
+        return (
+          <div key={k} id={`vv-row-${k}`} className="rounded-xl p-1.5">
+            <p className="text-sm font-bold">{LOOK[k].label}</p>
+            <p className="mb-1.5 text-[11px] text-ink-mute">{LOOK[k].hint}</p>
+            <div className="flex rounded-full bg-sky p-0.5" role="radiogroup" aria-label={LOOK[k].label}>
+              {Object.entries(opts).map(([v, label]) => (
+                <button key={v} type="button" role="radio" aria-checked={cur === v} onClick={() => setLook(k, v)} className={cn("h-8 flex-1 rounded-full px-2 text-xs font-bold", cur === v ? "bg-paper text-ink shadow-lift" : "text-ink-soft")}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Every styleable part, grouped, for the Parts tab (tapping one in the preview does the same). */
+export function PartsList({ design, onPick }: { design: Design; onPick: (key: BlockKey) => void }) {
+  const keys = Object.keys(BLOCKS) as BlockKey[];
+  const groups = [...new Set(keys.map((k) => BLOCKS[k].group))];
+  return (
+    <div className="space-y-5">
+      <p className="text-xs text-ink-soft">Restyle one part of the store. Cards and buttons change together. You can also switch to Style and tap a part in the preview.</p>
+      {groups.map((g) => (
+        <div key={g}>
+          <p className="mb-1.5 text-[0.68rem] font-bold tracking-[0.12em] text-ink-mute uppercase">{g}</p>
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
+            {keys
+              .filter((k) => BLOCKS[k].group === g)
+              .map((k) => (
+                <li key={k}>
+                  <button type="button" onClick={() => onPick(k)} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-sky/50">
+                    <span className="flex-1">{BLOCKS[k].label}</span>
+                    {design.blocks?.[k] && <span className="size-2 rounded-full bg-gulal" aria-label="Changed" />}
+                  </button>
+                </li>
+              ))}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }
@@ -149,17 +215,9 @@ export function BlockPanel({ block, design, setDesign, onClose }: { block: Picke
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div>
-          <p className="text-xs font-bold tracking-[0.06em] text-ink-mute uppercase">Style · {def.group}</p>
-          <p className="font-bold">{def.label}</p>
-        </div>
-        <button type="button" onClick={onClose} className="grid size-9 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-sky" aria-label="Close">
-          <X className="size-4" />
-        </button>
-      </div>
+      <DetailHeader eyebrow={`Style · ${def.group}`} title={def.label} onBack={onClose} />
       <p className={cn("mb-4 rounded-xl px-3 py-2 text-sm", "repeat" in def ? "bg-gold-soft text-gold-ink" : "bg-sky text-ink-soft")}>
-        {"repeat" in def ? `Changes ${def.repeat} at once (${block.count} on this page).` : "Changes this part only."}
+        {"repeat" in def ? `Changes ${def.repeat} at once${block.count ? ` (${block.count} on this page)` : ""}.` : "Changes this part only."}
       </p>
 
       <div className="space-y-4">
@@ -172,9 +230,12 @@ export function BlockPanel({ block, design, setDesign, onClose }: { block: Picke
                 <label className="relative size-10 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-line shadow-lift" style={{ background: value }}>
                   <input type="color" value={value} onChange={(e) => set(p, e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label={BLOCK_PROP_LABEL[p]} />
                 </label>
-                <span className="flex-1">
+                <span className="min-w-0 flex-1">
                   <span className="block text-sm font-bold">{BLOCK_PROP_LABEL[p]}</span>
-                  <span className="text-xs text-ink-mute">{own ? own.toUpperCase() : "From the theme"}</span>
+                  <span className="mt-0.5 flex items-center gap-2">
+                    <HexInput value={value} onChange={(v) => set(p, v)} label={BLOCK_PROP_LABEL[p]} />
+                    {!own && <span className="text-xs text-ink-mute">From the theme</span>}
+                  </span>
                 </span>
                 {own && <ResetBtn label={`Reset ${BLOCK_PROP_LABEL[p]}`} onClick={() => set(p, null)} />}
               </div>
@@ -229,19 +290,73 @@ function FontSelect({ value, onChange, placeholder }: { value: FontKey | null; o
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mb-6 border-t border-line pt-4">
-      <p className="mb-3 text-[0.7rem] font-bold tracking-[0.12em] text-gulal uppercase">{title}</p>
-      {children}
-    </section>
-  );
-}
-
 function ResetBtn({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="grid size-8 shrink-0 place-items-center rounded-full text-ink-mute hover:bg-sky hover:text-royal" aria-label={label} title={label}>
       <RotateCcw className="size-3.5" />
     </button>
   );
+}
+
+/**
+ * Type or paste a colour code. Accepts "#a1b2c3", "a1b2c3" or the short "#abc"; applies as soon as it is a full
+ * colour, and goes back to the current colour if left half-typed.
+ */
+function HexInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const [text, setText] = useState(value.toUpperCase());
+  useEffect(() => setText(value.toUpperCase()), [value]);
+  const parse = (raw: string) => {
+    const t = raw.trim().replace(/^#/, "");
+    if (/^[0-9a-f]{6}$/i.test(t)) return `#${t.toLowerCase()}`;
+    if (/^[0-9a-f]{3}$/i.test(t)) return `#${[...t].map((c) => c + c).join("").toLowerCase()}`;
+    return null;
+  };
+  return (
+    <input
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+        const v = parse(e.target.value);
+        if (v && e.target.value.replace(/^#/, "").length === 6) onChange(v);
+      }}
+      onBlur={() => {
+        const v = parse(text);
+        if (v) onChange(v);
+        else setText(value.toUpperCase());
+      }}
+      onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+      spellCheck={false}
+      maxLength={7}
+      aria-label={`${label} colour code`}
+      className="h-7 w-[5.6rem] shrink-0 rounded-md border border-line bg-paper px-1.5 font-mono text-base uppercase tracking-wide outline-none focus:border-royal sm:text-xs"
+    />
+  );
+}
+
+/** Top of a detail view inside the editor panel: back to the list, what is being edited. */
+export function DetailHeader({ eyebrow, title, onBack }: { eyebrow: string; title: string; onBack: () => void }) {
+  return (
+    <div className="mb-4 flex items-start gap-2">
+      <button type="button" onClick={onBack} className="-ml-1 grid size-9 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-sky" aria-label="Back">
+        <ArrowLeft className="size-4" />
+      </button>
+      <div className="min-w-0">
+        <p className="text-[0.68rem] font-bold tracking-[0.1em] text-ink-mute uppercase">{eyebrow}</p>
+        <p className="font-bold leading-snug">{title}</p>
+      </div>
+    </div>
+  );
+}
+
+/** Each font the store uses: the whole-store roles it fills and every part that picked it on its own. */
+function fontUsage(design: Design) {
+  const map = new Map<FontKey, { font: FontKey; roles: string[]; parts: { key: BlockKey; what: string }[] }>();
+  const at = (f: FontKey) => map.get(f) ?? map.set(f, { font: f, roles: [], parts: [] }).get(f)!;
+  at(design.fonts?.display ?? "rozha").roles.push("Headings across the whole store");
+  at(design.fonts?.body ?? "satoshi").roles.push("Text, buttons and menus across the whole store");
+  for (const [k, s] of Object.entries(design.blocks ?? {}) as [BlockKey, BlockStyle][]) {
+    if (s.headingFont) at(s.headingFont).parts.push({ key: k, what: "headings" });
+    if (s.bodyFont) at(s.bodyFont).parts.push({ key: k, what: "text" });
+  }
+  return [...map.values()];
 }

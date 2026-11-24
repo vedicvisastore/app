@@ -90,29 +90,30 @@ export type LookKey = keyof typeof LOOK;
 
 // ── Blocks: parts of the store that can be restyled on their own ──
 export type BlockProp = "bg" | "text" | "heading" | "headingFont" | "bodyFont" | "radius";
-type Block = { label: string; group: string; selector: string; props: BlockProp[]; repeat?: string };
+/** page: a store page where the part can be seen ("product" = any product page; none = on every page). */
+type Block = { label: string; group: string; selector: string; props: BlockProp[]; repeat?: string; page?: string };
 const S = (k: string) => `[data-s="${k}"]`;
 export const BLOCKS = {
   ribbon: { label: "Top ribbon", group: "Header and footer", selector: S("ribbon"), props: ["bg", "text", "bodyFont"] },
   header: { label: "Header (logo row)", group: "Header and footer", selector: S("header"), props: ["bg"] },
   menu: { label: "Menu bar", group: "Header and footer", selector: S("menu"), props: ["bg", "text", "bodyFont"] },
   footer: { label: "Footer", group: "Header and footer", selector: S("footer"), props: ["bg", "text", "heading", "headingFont"] },
-  "home.banner": { label: "Home banner", group: "Home page", selector: S("home.banner"), props: ["text", "heading", "headingFont"] },
-  "home.picks": { label: "Bestsellers and offers", group: "Home page", selector: S("home.picks"), props: ["bg", "heading", "headingFont"] },
-  "home.cats": { label: "Shop by category", group: "Home page", selector: S("home.cats"), props: ["bg", "heading", "headingFont"] },
-  "home.boxes": { label: "Bhakti Boxes section", group: "Home page", selector: S("home.boxes"), props: ["bg", "text", "heading", "headingFont"] },
-  "home.essentials": { label: "Popular items section", group: "Home page", selector: S("home.essentials"), props: ["bg", "heading", "headingFont"] },
-  "home.sets": { label: "Japa and Shringar sets", group: "Home page", selector: S("home.sets"), props: ["bg", "text", "heading", "headingFont"] },
-  "home.shloka": { label: "Dharma band", group: "Home page", selector: S("home.shloka"), props: ["bg", "text", "heading", "headingFont"] },
-  "home.follow": { label: "Follow us section", group: "Home page", selector: S("home.follow"), props: ["bg", "heading", "headingFont"] },
-  band: { label: "Page title bands", group: "Pages", selector: S("band"), props: ["bg", "text", "heading", "headingFont"], repeat: "every page's title band" },
-  "product.main": { label: "Product page top", group: "Pages", selector: S("product.main"), props: ["bg", "text", "heading", "headingFont"] },
-  "product.related": { label: "You may also like", group: "Pages", selector: S("product.related"), props: ["bg", "heading", "headingFont"] },
-  "card.product": { label: "Product cards", group: "Cards and buttons", selector: S("card.product"), props: ["bg", "text", "heading", "headingFont", "radius"], repeat: "every product card" },
-  "card.box": { label: "Bhakti Box cards", group: "Cards and buttons", selector: S("card.box"), props: ["bg", "text", "heading", "headingFont", "radius"], repeat: "every box card" },
-  "card.category": { label: "Category tiles", group: "Cards and buttons", selector: S("card.category"), props: ["text", "radius"], repeat: "every category tile" },
-  "button.primary": { label: "Main buttons", group: "Cards and buttons", selector: ".vv-btn-primary", props: ["bg", "text", "radius"], repeat: "every main button" },
-  "button.outline": { label: "Outline buttons", group: "Cards and buttons", selector: ".vv-btn-outline", props: ["text", "radius"], repeat: "every outline button" },
+  "home.banner": { label: "Home banner", group: "Home page", selector: S("home.banner"), props: ["text", "heading", "headingFont"] , page: "/" },
+  "home.picks": { label: "Bestsellers and offers", group: "Home page", selector: S("home.picks"), props: ["bg", "heading", "headingFont"] , page: "/" },
+  "home.cats": { label: "Shop by category", group: "Home page", selector: S("home.cats"), props: ["bg", "heading", "headingFont"] , page: "/" },
+  "home.boxes": { label: "Bhakti Boxes section", group: "Home page", selector: S("home.boxes"), props: ["bg", "text", "heading", "headingFont"] , page: "/" },
+  "home.essentials": { label: "Popular items section", group: "Home page", selector: S("home.essentials"), props: ["bg", "heading", "headingFont"] , page: "/" },
+  "home.sets": { label: "Japa and Shringar sets", group: "Home page", selector: S("home.sets"), props: ["bg", "text", "heading", "headingFont"] , page: "/" },
+  "home.shloka": { label: "Dharma band", group: "Home page", selector: S("home.shloka"), props: ["bg", "text", "heading", "headingFont"] , page: "/" },
+  "home.follow": { label: "Follow us section", group: "Home page", selector: S("home.follow"), props: ["bg", "heading", "headingFont"] , page: "/" },
+  band: { label: "Page title bands", group: "Pages", selector: S("band"), props: ["bg", "text", "heading", "headingFont"], repeat: "every page's title band" , page: "/deals" },
+  "product.main": { label: "Product page top", group: "Pages", selector: S("product.main"), props: ["bg", "text", "heading", "headingFont"] , page: "product" },
+  "product.related": { label: "You may also like", group: "Pages", selector: S("product.related"), props: ["bg", "heading", "headingFont"] , page: "product" },
+  "card.product": { label: "Product cards", group: "Cards and buttons", selector: S("card.product"), props: ["bg", "text", "heading", "headingFont", "radius"], repeat: "every product card" , page: "/shop" },
+  "card.box": { label: "Bhakti Box cards", group: "Cards and buttons", selector: S("card.box"), props: ["bg", "text", "heading", "headingFont", "radius"], repeat: "every box card" , page: "/" },
+  "card.category": { label: "Category tiles", group: "Cards and buttons", selector: S("card.category"), props: ["text", "radius"], repeat: "every category tile" , page: "/" },
+  "button.primary": { label: "Main buttons", group: "Cards and buttons", selector: ".vv-btn-primary", props: ["bg", "text", "radius"], repeat: "every main button" , page: "/" },
+  "button.outline": { label: "Outline buttons", group: "Cards and buttons", selector: ".vv-btn-outline", props: ["text", "radius"], repeat: "every outline button" , page: "/" },
 } satisfies Record<string, Block>;
 export type BlockKey = keyof typeof BLOCKS;
 export const isBlockKey = (k: unknown): k is BlockKey => typeof k === "string" && k in BLOCKS;
