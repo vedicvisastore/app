@@ -1,9 +1,9 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronDown, Plus } from "lucide-react";
+import { Check, ChevronDown, Download, Plus } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useState } from "react";
-import { ButtonLink, Media, ProductArt, Spinner , PageLoader } from "@/components/ui";
+import { Button, ButtonLink, Media, ProductArt, Spinner , PageLoader } from "@/components/ui";
 import { useTRPC } from "@/lib/trpc/client";
 import { adminLabel, cn, inr } from "@/lib/utils";
 import { Card, NumberCell, PageHeader, Tabs, Toggle, useToast } from "../_ui";
@@ -15,6 +15,7 @@ export default function BundlesPage() {
   const [view, setView] = useState<"cards" | "matrix">("cards");
   const [group, setGroup] = useState("all");
   const [open, setOpen] = useState<number | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const bundles = useQuery(trpc.admin.products.queryOptions({ kind: "bundle" }));
   const singles = useQuery({ ...trpc.admin.products.queryOptions({ kind: "single" }), enabled: view === "matrix" });
   const quick = useMutation(
@@ -30,6 +31,20 @@ export default function BundlesPage() {
   const list = bundles.data ?? [];
   const groups = [...new Set(list.map((b) => b.bundleGroup ?? "Other sets"))];
   const shown = list.filter((b) => group === "all" || (b.bundleGroup ?? "Other sets") === group);
+
+  const downloadPdf = async () => {
+    setPdfBusy(true);
+    try {
+      const [{ buildBoxContentsPdf }, { downloadBlob }] = await Promise.all([import("@/lib/pdf-box-contents"), import("@/lib/excel-catalogue")]);
+      const items = (singles.data ?? []).map((p) => ({ id: p.id, label: adminLabel(p), cost: p.cost, visibility: p.visibility }));
+      const boxes = list.map((b) => ({ id: b.id, label: adminLabel(b), price: b.price, componentCost: b.componentCost, visibility: b.visibility, components: b.components }));
+      downloadBlob(buildBoxContentsPdf(items, boxes), `vedicvisa-box-contents-${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   return (
     <>
@@ -47,6 +62,11 @@ export default function BundlesPage() {
             { value: "matrix", label: "Compare contents" },
           ]}
         />
+        {view === "matrix" && (
+          <Button size="sm" variant="outline" onClick={downloadPdf} disabled={pdfBusy || singles.isLoading || !list.length}>
+            {pdfBusy ? <Spinner /> : <Download className="size-4" aria-hidden />} Download PDF
+          </Button>
+        )}
       </div>
       {bundles.isLoading && <PageLoader />}
 

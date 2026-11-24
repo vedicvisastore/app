@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, desc, eq, gte, ilike, inArray, isNotNull, notInArray, or, sql, sum } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, notInArray, or, sql, sum } from "drizzle-orm";
 import { z } from "zod";
 import {
   addresses,
@@ -432,19 +432,46 @@ export const adminRouter = router({
 
   // ── Orders ─────────────────────────────────────────────
   orders: adminProcedure
-    .input(z.object({ status: z.enum(STATUSES).optional(), q: z.string().optional(), includePending: z.boolean().default(false) }))
+    .input(
+      z.object({
+        status: z.enum(STATUSES).optional(),
+        q: z.string().max(100).optional(),
+        includePending: z.boolean().default(false),
+        /** Order placed in [from, to). */
+        from: z.string().datetime().optional(),
+        to: z.string().datetime().optional(),
+        state: z.string().max(60).optional(),
+        productId: z.number().int().positive().optional(),
+        minTotal: z.number().int().min(0).optional(),
+        maxTotal: z.number().int().min(0).optional(),
+        offer: z.enum(["coupon", "discount", "none"]).optional(),
+        sort: z.enum(["new", "old", "high", "low"]).default("new"),
+        limit: z.number().int().min(1).max(1000).default(100),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       const where = and(
         input.status ? eq(orders.status, input.status) : input.includePending ? undefined : sql`${orders.status} <> 'pending_payment'`,
         input.q
           ? or(ilike(orders.number, `%${input.q}%`), ilike(orders.email, `%${input.q}%`), sql`${orders.shippingAddress}->>'phone' ilike ${"%" + input.q + "%"}`, sql`${orders.shippingAddress}->>'name' ilike ${"%" + input.q + "%"}`, ilike(orders.trackingNumber, `%${input.q}%`))
           : undefined,
+        input.from ? gte(orders.createdAt, new Date(input.from)) : undefined,
+        input.to ? sql`${orders.createdAt} < ${input.to}` : undefined,
+        input.state ? sql`${orders.shippingAddress}->>'state' = ${input.state}` : undefined,
+        input.productId ? sql`exists (select 1 from ${orderItems} where ${orderItems.orderId} = ${orders.id} and ${orderItems.productId} = ${input.productId})` : undefined,
+        input.minTotal != null ? gte(orders.total, input.minTotal) : undefined,
+        input.maxTotal != null ? sql`${orders.total} <= ${input.maxTotal}` : undefined,
+        input.offer === "coupon" ? isNotNull(orders.couponCode) : input.offer === "discount" ? sql`${orders.discountTotal} > 0` : input.offer === "none" ? eq(orders.discountTotal, 0) : undefined,
       );
-      const list = await ctx.db.select().from(orders).where(where).orderBy(desc(orders.createdAt)).limit(200);
+      const order = { new: desc(orders.createdAt), old: asc(orders.createdAt), high: desc(orders.total), low: asc(orders.total) }[input.sort];
+      const [list, [sum]] = await Promise.all([
+        ctx.db.select().from(orders).where(where).orderBy(order, desc(orders.id)).limit(input.limit),
+        ctx.db.select({ count: sql<number>`count(*)`.mapWith(Number), total: sql<number>`coalesce(sum(${orders.total}), 0)`.mapWith(Number) }).from(orders).where(where),
+      ]);
       const items = list.length
         ? await ctx.db.select({ orderId: orderItems.orderId, qty: orderItems.qty, name: orderItems.name }).from(orderItems).where(inArray(orderItems.orderId, list.map((o) => o.id)))
         : [];
-      return list.map((o) => ({ ...o, items: items.filter((i) => i.orderId === o.id) }));
+      return { count: sum.count, total: sum.total, orders: list.map((o) => ({ ...o, items: items.filter((i) => i.orderId === o.id) })) };
     }),
   // ── Customers ──────────────────────────────────────────
   /** Everyone who has an account or has ordered, one row per email: orders, spend, open orders, last seen. */

@@ -39,7 +39,7 @@ export function Field({ label, hint, children, className }: { label: string; hin
 }
 
 /** Edits a paise value as rupees. */
-export function MoneyInput({ value, onChange, allowEmpty, ...rest }: { value: number | null; onChange: (paise: number | null) => void; allowEmpty?: boolean } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
+export function MoneyInput({ value, onChange, allowEmpty, className, ...rest }: { value: number | null; onChange: (paise: number | null) => void; allowEmpty?: boolean } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
   const [text, setText] = useState(value == null ? "" : String(value / 100));
   const [last, setLast] = useState(value);
   if (value !== last) {
@@ -51,7 +51,7 @@ export function MoneyInput({ value, onChange, allowEmpty, ...rest }: { value: nu
       <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-mute">₹</span>
       <input
         inputMode="decimal"
-        className="field pl-7 tabular-nums"
+        className={cn("field pl-7 tabular-nums", className)}
         value={text}
         onChange={(e) => {
           const t = e.target.value.replace(/[^\d.]/g, "");
