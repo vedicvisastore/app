@@ -47,7 +47,7 @@ const NAV: { title?: string; items: NavItem[] }[] = [
   {
     title: "Setup",
     items: [
-      { href: "/admin/import", label: "Import Excel", icon: FileSpreadsheet },
+      { href: "/admin/import", label: "Excel", icon: FileSpreadsheet },
       { href: "/admin/settings", label: "Settings", icon: Settings },
     ],
   },

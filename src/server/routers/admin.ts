@@ -20,6 +20,8 @@ import {
   type OrderStatus,
 } from "@/db/schema";
 import { importSheet } from "@/lib/excel-apply";
+import { ROW_LIMIT, type RawRow } from "@/lib/catalogue-sheet";
+import { importCatalogue } from "../catalogue-import";
 import { festivalState } from "@/lib/festival-status";
 import { safeRibbonHref } from "@/lib/settings-defaults";
 import { slugify } from "@/lib/utils";
@@ -848,5 +850,99 @@ export const adminRouter = router({
       }),
     )
     .mutation(({ ctx, input }) => importSheet(ctx.db, input)),
+  // ── Excel: catalogue upload (upsert by SKU), catalogue download, stock & sales report ──
+  importCatalogue: adminProcedure
+    .input(
+      z.object({
+        apply: z.boolean(),
+        rows: z
+          .array(z.object({ sheet: z.enum(["Products", "Boxes"]), row: z.number().int(), cells: z.record(z.string(), z.string().max(5000)) }))
+          .max(ROW_LIMIT),
+      }),
+    )
+    .mutation(({ ctx, input }) => importCatalogue(ctx.db, input.rows as RawRow[], { apply: input.apply, userId: ctx.user.id })),
+  /** Everything needed to write the catalogue file (same columns as the upload). */
+  exportCatalogue: adminProcedure.query(async ({ ctx }) => {
+    const [rows, cats, comps] = await Promise.all([
+      ctx.db.select().from(products).orderBy(products.kind, products.name),
+      ctx.db.select({ id: categories.id, name: categories.name }).from(categories).orderBy(categories.sortOrder, categories.name),
+      ctx.db.select().from(bundleItems),
+    ]);
+    const catName = new Map(cats.map((c) => [c.id, c.name]));
+    const skuOf = new Map(rows.map((p) => [p.id, p.sku]));
+    return {
+      categories: cats.map((c) => c.name),
+      products: rows.map((p) => ({
+        sku: p.sku,
+        kind: p.kind,
+        name: p.name,
+        adminName: p.adminName,
+        group: p.bundleGroup,
+        category: p.categoryId ? (catName.get(p.categoryId) ?? null) : null,
+        tagline: p.tagline,
+        description: p.description,
+        price: p.price,
+        mrp: p.mrp,
+        cost: p.cost,
+        stock: p.stock,
+        visibility: p.visibility,
+        pinRank: p.pinRank,
+        boost: p.boost,
+        featured: p.featured,
+        comingSoon: p.comingSoon,
+        launchAt: p.launchAt,
+        photos: p.images,
+        contents: comps.filter((c) => c.bundleId === p.id).map((c) => ({ sku: skuOf.get(c.productId) ?? "?", qty: c.qty })),
+      })),
+    };
+  }),
+  /** Raw numbers for the stock & sales workbook (built in the browser). Dates are ISO; money in paise. */
+  reportData: adminProcedure.input(z.object({ from: z.string().datetime(), to: z.string().datetime() })).query(async ({ ctx, input }) => {
+    const from = new Date(input.from);
+    const to = new Date(input.to);
+    const counted = ["paid", "packed", "shipped", "delivered"] as const;
+    const [prods, before, moves, ords] = await Promise.all([
+      ctx.db.select({ id: products.id, sku: products.sku, name: products.name, kind: products.kind, cost: products.cost, price: products.price, visibility: products.visibility, stock: products.stock }).from(products).orderBy(products.kind, products.name),
+      // Stock at the start: each product's balance after its last movement before the period.
+      ctx.db.execute(sql`select distinct on (product_id) product_id as "productId", balance_after as "balance" from stock_movements where created_at < ${from.toISOString()} order by product_id, created_at desc, id desc`),
+      ctx.db
+        .select({ id: stockMovements.id, productId: stockMovements.productId, delta: stockMovements.delta, balanceAfter: stockMovements.balanceAfter, reason: stockMovements.reason, note: stockMovements.note, createdAt: stockMovements.createdAt, orderNumber: orders.number })
+        .from(stockMovements)
+        .leftJoin(orders, eq(orders.id, stockMovements.orderId))
+        .where(and(gte(stockMovements.createdAt, from), sql`${stockMovements.createdAt} < ${to.toISOString()}`))
+        .orderBy(stockMovements.createdAt, stockMovements.id),
+      ctx.db
+        .select()
+        .from(orders)
+        .where(and(isNotNull(orders.paidAt), gte(orders.paidAt, from), sql`${orders.paidAt} < ${to.toISOString()}`))
+        .orderBy(orders.paidAt),
+    ]);
+    const lines = ords.length ? await ctx.db.select().from(orderItems).where(inArray(orderItems.orderId, ords.map((o) => o.id))) : [];
+    const beforeRows = ((before as unknown as { rows?: { productId: number; balance: number }[] }).rows ?? (before as unknown as { productId: number; balance: number }[])) as { productId: number; balance: number }[];
+    return {
+      from: from.toISOString(),
+      to: to.toISOString(),
+      products: prods,
+      opening: Object.fromEntries(beforeRows.map((b) => [b.productId, Number(b.balance)])),
+      movements: moves,
+      orders: ords.map((o) => ({
+        id: o.id,
+        number: o.number,
+        status: o.status,
+        counted: (counted as readonly string[]).includes(o.status),
+        paidAt: o.paidAt!,
+        email: o.email,
+        name: o.shippingAddress.name,
+        city: o.shippingAddress.city,
+        state: o.shippingAddress.state,
+        subtotal: o.subtotal,
+        discount: o.discountTotal,
+        shipping: o.shippingFee,
+        total: o.total,
+        coupon: o.couponCode,
+      })),
+      lines: lines.map((l) => ({ orderId: l.orderId, productId: l.productId, sku: l.sku, name: l.name, qty: l.qty, unitPrice: l.unitPrice, lineTotal: l.lineTotal })),
+    };
+  }),
   webhookLog: adminProcedure.query(({ ctx }) => ctx.db.select().from(webhookEvents).orderBy(desc(webhookEvents.receivedAt)).limit(50)),
 });
