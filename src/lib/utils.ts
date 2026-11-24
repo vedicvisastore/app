@@ -79,3 +79,6 @@ export const storeHref = (path: string) => `${(process.env.NEXT_PUBLIC_SITE_URL 
 
 /** What admin screens call a product: its admin-only name when set, else the customer name. */
 export const adminLabel = (p: { name: string; adminName?: string | null }) => p.adminName || p.name;
+
+/** Admin link to a customer's profile (customers are identified by email). */
+export const customerHref = (email: string) => `/admin/customers/${encodeURIComponent(email.toLowerCase())}`;

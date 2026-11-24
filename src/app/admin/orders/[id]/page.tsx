@@ -8,7 +8,7 @@ import { Button, Spinner , PageLoader } from "@/components/ui";
 import type { OrderStatus } from "@/db/schema";
 import { PRIMARY_ACTION } from "@/lib/order-machine";
 import { useTRPC } from "@/lib/trpc/client";
-import { formatDate, INDIA_POST_TRACK_URL, inr, ORDER_STATUS_LABEL } from "@/lib/utils";
+import { customerHref, formatDate, INDIA_POST_TRACK_URL, inr, ORDER_STATUS_LABEL } from "@/lib/utils";
 import { Card, Field, PageHeader, useToast } from "../../_ui";
 
 
@@ -132,6 +132,41 @@ export default function AdminOrder({ params }: { params: Promise<{ id: string }>
         </div>
 
         <div className="space-y-6">
+          {/* Who this is: their profile and their other orders, so repeat customers are recognised */}
+          <Card className="p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="font-sans text-lg font-bold">Customer</h2>
+                <p className="truncate text-sm">
+                  <b>{o.customer?.name ?? a.name}</b>
+                  <span className="text-ink-soft"> · {o.email}</span>
+                </p>
+                <p className="text-xs text-ink-mute">
+                  {o.customer ? `Account since ${formatDate(o.customer.createdAt)}` : "Guest checkout"} · {o.customerTotals.orders} {o.customerTotals.orders === 1 ? "order" : "orders"} · {inr(o.customerTotals.spent)} spent
+                </p>
+              </div>
+              <Link href={customerHref(o.email)} className="shrink-0 rounded-full border border-line px-3 py-1.5 text-sm font-bold text-royal hover:border-royal">
+                Profile
+              </Link>
+            </div>
+            {o.otherOrders.length > 0 ? (
+              <ul className="mt-3 divide-y divide-line rounded-xl border border-line text-sm">
+                {o.otherOrders.map((x) => (
+                  <li key={x.id}>
+                    <Link href={`/admin/orders/${x.id}`} className="flex items-center gap-2 px-3 py-2 hover:bg-sky/40">
+                      <b className="text-royal">{x.number}</b>
+                      <StatusPill status={x.status} label={ORDER_STATUS_LABEL[x.status]} />
+                      <span className="ml-auto text-xs text-ink-mute">{formatDate(x.createdAt)}</span>
+                      <b className="w-16 text-right tabular-nums">{inr(x.total)}</b>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 rounded-xl bg-gold-soft px-3 py-2 text-sm text-gold-ink">First order from this customer.</p>
+            )}
+          </Card>
+
           <Card className="p-5">
             <div className="flex items-center justify-between">
               <h2 className="font-sans text-lg font-bold">Ship to</h2>

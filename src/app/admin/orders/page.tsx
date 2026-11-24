@@ -7,7 +7,7 @@ import { Suspense, useState } from "react";
 import { StatusPill } from "@/app/(store)/account/status-pill";
 import { Spinner , PageLoader } from "@/components/ui";
 import { useTRPC } from "@/lib/trpc/client";
-import { formatDate, inr, ORDER_STATUS_LABEL } from "@/lib/utils";
+import { customerHref, formatDate, inr, ORDER_STATUS_LABEL } from "@/lib/utils";
 import { Card, PageHeader, Tabs, td, th } from "../_ui";
 
 const STATUS_TABS = ["all", "paid", "packed", "shipped", "delivered", "cancelled", "pending_payment"] as const;
@@ -49,7 +49,7 @@ function Orders() {
               {data?.map((o) => (
                 <tr key={o.id} className="cursor-pointer border-b border-line last:border-0 hover:bg-sky/40" onClick={() => router.push(`/admin/orders/${o.id}`)}>
                   <td className={td}><Link href={`/admin/orders/${o.id}`} className="font-bold text-royal" onClick={(e) => e.stopPropagation()}>{o.number}</Link><p className="text-xs text-ink-mute">{formatDate(o.createdAt, true)}</p></td>
-                  <td className={td}>{o.shippingAddress.name}<p className="text-xs text-ink-mute">{o.shippingAddress.phone}, {o.shippingAddress.pincode}</p></td>
+                  <td className={td}><Link href={customerHref(o.email)} className="font-bold hover:text-royal" onClick={(e) => e.stopPropagation()}>{o.shippingAddress.name}</Link><p className="text-xs text-ink-mute">{o.shippingAddress.phone}, {o.shippingAddress.city ?? o.shippingAddress.pincode}</p></td>
                   <td className={`${td} max-w-[260px]`}><p className="truncate">{o.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}</p></td>
                   <td className={td}><StatusPill status={o.status} label={ORDER_STATUS_LABEL[o.status]} /></td>
                   <td className={`${td} font-mono text-xs`}>{o.trackingNumber ?? <span className="text-ink-mute">—</span>}</td>
