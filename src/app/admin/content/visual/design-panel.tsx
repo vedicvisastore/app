@@ -1,5 +1,5 @@
 "use client";
-import { ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
+import { ArrowRight, RotateCcw, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   BLOCK_PROP_LABEL,
@@ -417,13 +417,13 @@ function HexInput({ value, onChange, label }: { value: string; onChange: (v: str
 export function DetailHeader({ eyebrow, title, onBack }: { eyebrow: string; title: string; onBack: () => void }) {
   return (
     <div className="mb-4 flex items-start gap-2">
-      <button type="button" onClick={onBack} className="-ml-1 grid size-9 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-sky" aria-label="Back">
-        <ArrowLeft className="size-4" />
-      </button>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-[0.68rem] font-bold tracking-[0.1em] text-ink-mute uppercase">{eyebrow}</p>
         <p className="font-bold leading-snug">{title}</p>
       </div>
+      <button type="button" onClick={onBack} className="-mr-1 grid size-9 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-sky" aria-label="Close">
+        <X className="size-4" />
+      </button>
     </div>
   );
 }

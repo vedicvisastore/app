@@ -1,8 +1,8 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, ImageUp, Monitor, MousePointerClick, Paintbrush, Pencil, RotateCcw, Search, SlidersHorizontal, Smartphone, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, ImageUp, Monitor, MousePointerClick, Paintbrush, Pencil, RotateCcw, Search, Smartphone, X } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button, PageLoader, Spinner } from "@/components/ui";
 import { CONTENT_GROUPS } from "@/content/defaults";
 import { DEFAULT_IMAGES, IMAGE_SLOTS, isImageKey, type ImageKey } from "@/content/images";
@@ -91,11 +91,12 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
   const designChanged = designJson !== designBase;
   const [tokens, setTokens] = useState<Record<string, string>>({});
   const [block, setBlock] = useState<PickedBlock | null>(null);
-  // One panel: tabs for everything, a search across everything, and a detail view when something is picked.
-  const [tab, setTab] = useState<Tab>("text");
+  // No side panel: the preview fills the screen. A dock at the bottom opens one sheet at a time (Text, Pictures,
+  // Colours, Fonts, Look, Parts, Search); picking something opens a small card right next to it on the page.
+  const [sheet, setSheet] = useState<Tab | "search" | null>(null);
   const [group, setGroup] = useState<string>(CONTENT_GROUPS[0].key);
   const [focus, setFocus] = useState<string | null>(null);
-  const [panelOpen, setPanelOpen] = useState(true); // phones: the panel is a sheet that can be put away
+  const [anchor, setAnchor] = useState<Rect | null>(null);
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -118,12 +119,39 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
     }
   }, []);
   const send = useCallback((msg: Record<string, unknown>) => frame.current?.contentWindow?.postMessage(msg, storeOrigin), [storeOrigin]);
+  const stage = useRef<HTMLDivElement>(null);
+  /** An element's box inside the framed page → its box on the editor screen (the laptop preview is scaled). */
+  const toPage = (r: Rect): Rect => {
+    const f = frame.current?.getBoundingClientRect();
+    const box = stage.current?.getBoundingClientRect();
+    if (!f || !box || !frame.current) return r;
+    const scale = f.width / (frame.current.offsetWidth || f.width);
+    return { x: f.left - box.left + r.x * scale, y: f.top - box.top + r.y * scale, w: r.w * scale, h: r.h * scale, fl: f.left - box.left, fr: f.right - box.left };
+  };
+  // Ctrl/⌘ K opens search; Esc closes whatever is open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSelected(null);
+        setBlock(null);
+        setSheet("search");
+      } else if (e.key === "Escape") {
+        setSheet(null);
+        setSelected(null);
+        setBlock(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Messages from the framed store page.
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.source !== frame.current?.contentWindow || e.origin !== storeOrigin || !e.data || typeof e.data !== "object") return;
-      const m = e.data as { type: string; key?: string; href?: string; path?: string; count?: number; colors?: Record<string, string> };
+      const m = e.data as { type: string; key?: string; href?: string; path?: string; count?: number; colors?: Record<string, string>; rect?: Rect };
+      if (m.rect) setAnchor(toPage(m.rect));
       if (m.type === "vv:ready") {
         setLoading(false);
         if (m.path) setShownPath(m.path);
@@ -137,7 +165,7 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
       } else if ((m.type === "vv:edit" && m.key && BY_KEY.has(m.key)) || (m.type === "vv:image" && m.key && isImageKey(m.key))) {
         setBlock(null);
         setSelected(m.key!);
-        setPanelOpen(true);
+        setSheet(null);
       }
       else if (m.type === "vv:open" && m.href?.startsWith("/admin/")) window.open(m.href, "_blank", "noopener");
       else if (m.type === "vv:tokens" && m.colors) setTokens(m.colors);
@@ -145,7 +173,7 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
       else if (m.type === "vv:block" && m.key) {
         setSelected(null);
         setBlock({ key: m.key as PickedBlock["key"], count: m.count ?? null, colors: (m.colors ?? {}) as PickedBlock["colors"] });
-        setPanelOpen(true);
+        setSheet(null);
       }
     };
     window.addEventListener("message", onMsg);
@@ -163,7 +191,9 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
   useEffect(() => send({ type: "vv:mode", mode }), [mode, send]);
   // Every design change is shown in the frame straight away.
   useEffect(() => send({ type: "vv:design", css: designCss(design), fonts: designFontsHref(design) }), [designJson, send]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => send({ type: "vv:selectBlock", key: block?.key ?? null }), [block?.key, send]);
+  useEffect(() => {
+    if (!loading) send({ type: "vv:selectBlock", key: block?.key ?? null });
+  }, [block?.key, send]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => send({ type: "vv:select", key: selected }), [selected, send]);
 
   // Unsaved text goes to the server as a short-lived admin-only draft, so page changes inside the frame keep it.
@@ -264,23 +294,39 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
     const target = want === "product" ? pages.find((p) => p.path.startsWith("/p/"))?.path : want;
     setSelected(null);
     setMode("style");
-    setBlock({ key, count: null, colors: {} });
-    setPanelOpen(true);
+    setSheet(null);
+    setAnchor(null);
     const here = shownPath.split("?")[0];
-    if (target && !(want === "product" ? here.startsWith("/p/") : here === target)) go(target);
-    else send({ type: "vv:selectBlock", key });
+    const elsewhere = !!target && !(want === "product" ? here.startsWith("/p/") : here === target);
+    // One jump, no animation: on another page the part is shown once that page has loaded (vv:ready);
+    // on this page the block effect sends it. Only re-send when the same part is picked again.
+    if (elsewhere) go(target!);
+    else if (block?.key === key) send({ type: "vv:selectBlock", key });
+    setBlock({ key, count: null, colors: {} });
   };
 
   const field = selected ? BY_KEY.get(selected) : null;
   const slotKey = selected && isImageKey(selected) ? selected : null;
   const value = field ? (edits[field.key] ?? field.value) : "";
+  const detail = !!(block || field || slotKey);
+  const closeDetail = () => {
+    setBlock(null);
+    setSelected(null);
+    setAnchor(null);
+  };
+  const openFromList = (key: string) => {
+    setSheet(null);
+    setAnchor(null);
+    setSelected(key);
+  };
+  const sheetTitle = sheet === "search" ? "Search" : TABS.find((t) => t.key === sheet)?.label;
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-paper">
+    <div className="fixed inset-0 z-[60] flex flex-col bg-paper-2">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2 sm:px-4">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line bg-paper px-3 py-2 sm:px-4">
         <Link href="/admin/content" className="inline-flex h-9 items-center gap-1 rounded-full px-2 text-sm font-bold text-ink-soft hover:text-royal">
-          <ArrowLeft className="size-4" aria-hidden /> <span className="hidden sm:inline">Store text</span>
+          <ArrowLeft className="size-4" aria-hidden /> <span className="hidden sm:inline">Back</span>
         </Link>
         <select value={pages.some((p) => p.path === path) ? path : ""} onChange={(e) => e.target.value && go(e.target.value)} className="h-9 min-w-0 rounded-full border border-line bg-paper px-3 text-base sm:text-sm" aria-label="Page to edit">
           {!pages.some((p) => p.path === path) && <option value="">{shownPath}</option>}
@@ -290,7 +336,7 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
             </option>
           ))}
         </select>
-        <div className="flex rounded-full bg-sky p-0.5" role="radiogroup" aria-label="What tapping does">
+        <div className="flex rounded-full bg-sky p-0.5" role="radiogroup" aria-label="What tapping the page does">
           {(
             [
               ["edit", "Text", Pencil],
@@ -315,9 +361,6 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
             </button>
           ))}
         </div>
-        <button type="button" onClick={() => setPanelOpen((o) => !o)} aria-pressed={panelOpen} className={cn("inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-bold lg:hidden", panelOpen ? "bg-ink text-white" : "text-ink-soft hover:bg-sky")}>
-          <SlidersHorizontal className="size-4" aria-hidden /> Panel
-        </button>
         <a href={storeHref(shownPath)} target="_blank" rel="noreferrer" className="hidden h-9 items-center gap-1 rounded-full px-2 text-sm text-ink-soft hover:text-royal sm:inline-flex">
           <ExternalLink className="size-4" aria-hidden /> Open
         </a>
@@ -336,159 +379,216 @@ function Editor({ saved, savedImages, savedDesign, pages }: { saved: Record<stri
 
       {/* Font samples need the fonts themselves (admin page only). */}
       <link rel="stylesheet" href={ALL_FONTS_HREF} />
-      <div className="relative flex min-h-0 flex-1">
-        {/* The store */}
+      <div ref={stage} className="relative min-h-0 flex-1">
         <Frame device={device} frameKey={frameKey} path={path} frame={frame} loading={loading} onLoad={() => setLoading(false)} />
 
-        {/* The one editing panel: search, tabs, and a detail view for whatever is picked */}
-        <aside
-          data-editor-panel
-          className={cn(
-            "z-10 flex min-h-0 flex-col border-line bg-paper",
-            "max-lg:absolute max-lg:inset-x-0 max-lg:bottom-0 max-lg:h-[62%] max-lg:rounded-t-3xl max-lg:border-t max-lg:shadow-float max-lg:pb-[env(safe-area-inset-bottom,0px)]",
-            "lg:w-[400px] lg:shrink-0 lg:border-l",
-            !panelOpen && "max-lg:hidden",
-          )}
-        >
-          {block ? (
-            <BlockPanel block={block} design={design} setDesign={setDesign} onClose={() => setBlock(null)} />
-          ) : slotKey ? (
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-              <DetailHeader eyebrow={`Picture · ${IMAGE_SLOTS[slotKey].where}`} title={IMAGE_SLOTS[slotKey].label} onBack={() => setSelected(null)} />
-              <div className="grid place-items-center rounded-xl bg-paper-2 p-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={imgs[slotKey]} alt="" className="max-h-56 w-auto max-w-full rounded-lg object-contain" />
-              </div>
-              <p className="mt-2 text-xs text-ink-soft">{IMAGE_SLOTS[slotKey].hint} Up to 10 MB.</p>
-              <label className={cn("mt-3 inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-gold px-5 text-sm font-bold text-shyam hover:brightness-95", uploading && "pointer-events-none opacity-60")}>
-                {uploading ? <Spinner /> : <ImageUp className="size-4" aria-hidden />} {uploading ? "Uploading…" : "Upload a new picture"}
-                <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" className="sr-only" onChange={(e) => { void pickFile(slotKey, e.target.files?.[0]); e.target.value = ""; }} />
-              </label>
-              {imgs[slotKey] !== DEFAULT_IMAGES[slotKey] && (
-                <button type="button" onClick={() => setImage(slotKey, DEFAULT_IMAGES[slotKey])} className="mt-3 inline-flex items-center gap-1 self-start text-xs font-bold text-royal">
-                  <RotateCcw className="size-3.5" aria-hidden /> Use the original picture
-                </button>
-              )}
-            </div>
-          ) : field ? (
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-              <DetailHeader eyebrow={field.groupLabel} title={field.label} onBack={() => setSelected(null)} />
-              <textarea
-                autoFocus
-                value={value}
-                onChange={(e) => setValue(field.key, e.target.value)}
-                rows={Math.min(8, Math.max(2, Math.ceil(value.length / 34)))}
-                maxLength={600}
-                className="field text-base"
-                aria-label={field.label}
-              />
-              {field.hint && <p className="mt-2 text-xs text-ink-soft">{field.hint}</p>}
-              {/\{\w+\}/.test(field.value) && !field.hint && <p className="mt-2 text-xs text-ink-soft">Keep the words in {"{braces}"}: the store fills them in.</p>}
-              {value !== field.value && (
-                <div className="mt-3 rounded-xl bg-paper-2 p-3 text-sm">
-                  <p className="text-xs text-ink-mute">Original</p>
-                  <p className="text-ink-soft">{field.value}</p>
-                  <button type="button" onClick={() => setValue(field.key, field.value)} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-royal">
-                    <RotateCcw className="size-3.5" aria-hidden /> Use original
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-              {/* Search everything: text, pictures, colours, fonts, look and parts */}
-              <div className="border-b border-line p-3">
-                <label className="flex h-11 items-center gap-2 rounded-full border border-line bg-paper-2 px-4 focus-within:border-royal">
+        {/* Click outside a sheet or card (on the dimmed page) to close it */}
+        {(sheet || detail) && <button type="button" aria-label="Close" onClick={() => { setSheet(null); closeDetail(); }} className={cn("absolute inset-0 z-20 cursor-default", sheet ? "bg-ink/15" : "bg-transparent")} />}
+
+        {/* A dock item's sheet: rises above the dock, roomy, one at a time */}
+        {sheet && (
+          <Sheet title={sheetTitle ?? ""} wide={sheet === "fonts" || sheet === "pictures" || sheet === "colours"} onClose={() => setSheet(null)}>
+            {sheet === "search" ? (
+              <>
+                <label className="mb-3 flex h-12 items-center gap-2 rounded-2xl border border-line bg-paper-2 px-4 focus-within:border-royal">
                   <Search className="size-4 shrink-0 text-ink-mute" aria-hidden />
-                  <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search text, colours, fonts, parts…" className="h-full min-w-0 flex-1 bg-transparent text-base outline-none sm:text-sm" aria-label="Search the editor" />
-                  {q && (
-                    <button type="button" onClick={() => setQ("")} className="text-ink-mute" aria-label="Clear search">
-                      <X className="size-4" />
-                    </button>
-                  )}
+                  <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Text, colours, fonts, parts… (typos are fine)" className="h-full min-w-0 flex-1 bg-transparent text-base outline-none" aria-label="Search the editor" />
                 </label>
-                {!q && (
-                  <nav className="mt-3 grid grid-cols-6 gap-1" aria-label="Editor sections">
-                    {TABS.map((t) => (
-                      <button key={t.key} type="button" onClick={() => setTab(t.key)} aria-current={tab === t.key ? "page" : undefined} className={cn("flex flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-bold transition-colors", tab === t.key ? "bg-ink text-white" : "text-ink-soft hover:bg-sky")}>
-                        <t.icon className="size-[18px]" aria-hidden />
-                        {t.label}
-                      </button>
-                    ))}
-                  </nav>
-                )}
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto p-4">
                 {q.trim() ? (
                   <SearchResults
                     items={searchIndex}
                     q={q}
                     onPick={(it) => {
                       setQ("");
-                      if (it.kind === "text" || it.kind === "picture") setSelected(it.key);
+                      if (it.kind === "text" || it.kind === "picture") openFromList(it.key);
                       else if (it.kind === "part") goToPart(it.key as BlockKey);
                       else {
-                        setTab(it.kind);
+                        setSheet(it.kind);
                         setFocus(`${it.key}:${Date.now()}`);
                       }
                     }}
                   />
-                ) : tab === "text" ? (
-                  <>
-                    <div className="no-scrollbar -mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4">
-                      {CONTENT_GROUPS.map((g) => {
-                        const n = FIELDS.filter((f) => f.group === g.key && current[f.key]).length;
-                        return (
-                          <button key={g.key} type="button" onClick={() => setGroup(g.key)} className={cn("shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold whitespace-nowrap", group === g.key ? "border-royal bg-royal/10 text-royal" : "border-line text-ink-soft hover:border-ink")}>
-                            {g.label}
-                            {n > 0 && <span className="ml-1 text-gulal">•{n}</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <ul className="space-y-0.5">
-                      {FIELDS.filter((f) => f.group === group).map((f) => (
-                        <li key={f.key}>
-                          <button type="button" onClick={() => setSelected(f.key)} className="w-full rounded-lg px-2 py-2 text-left hover:bg-sky">
-                            <span className="flex items-center gap-1.5 text-xs text-ink-mute">
-                              {f.label}
-                              {current[f.key] && <span className="size-1.5 rounded-full bg-gulal" aria-label="Changed" />}
-                            </span>
-                            <span className="block truncate text-sm">{edits[f.key] || f.value}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : tab === "pictures" ? (
-                  <ul className="grid grid-cols-2 gap-3">
-                    {IMAGE_KEYS.map((k) => (
-                      <li key={k}>
-                        <button type="button" onClick={() => setSelected(k)} className="w-full rounded-xl border border-line p-2 text-left hover:border-royal">
-                          <span className="grid aspect-square place-items-center overflow-hidden rounded-lg bg-paper-2">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={imgs[k]} alt="" className="max-h-full max-w-full object-contain" />
-                          </span>
-                          <span className="mt-1.5 block truncate text-sm font-bold">
-                            {IMAGE_SLOTS[k].label}
-                            {imgsChanged.includes(k) && <span className="ml-1 text-gulal">•</span>}
-                          </span>
-                          <span className="block truncate text-xs text-ink-mute">{IMAGE_SLOTS[k].where}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : tab === "parts" ? (
-                  <PartsList design={design} onPick={goToPart} />
                 ) : (
-                  <DesignSection part={tab} design={design} setDesign={setDesign} tokens={tokens} focus={focus?.split(":")[0] ?? null} onPart={goToPart} />
+                  <p className="py-6 text-center text-sm text-ink-mute">Find any text, picture, colour, font or part of the store.</p>
+                )}
+              </>
+            ) : sheet === "text" ? (
+              <>
+                <div className="no-scrollbar -mx-5 mb-3 flex gap-1.5 overflow-x-auto px-5">
+                  {CONTENT_GROUPS.map((g) => {
+                    const n = FIELDS.filter((f) => f.group === g.key && current[f.key]).length;
+                    return (
+                      <button key={g.key} type="button" onClick={() => setGroup(g.key)} className={cn("shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold whitespace-nowrap", group === g.key ? "border-ink bg-ink text-white" : "border-line text-ink-soft hover:border-ink")}>
+                        {g.label}
+                        {n > 0 && <span className="ml-1 text-gulal">•{n}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <ul className="grid gap-1 sm:grid-cols-2">
+                  {FIELDS.filter((f) => f.group === group).map((f) => (
+                    <li key={f.key}>
+                      <button type="button" onClick={() => openFromList(f.key)} className="w-full rounded-xl px-3 py-2 text-left hover:bg-sky">
+                        <span className="flex items-center gap-1.5 text-[11px] text-ink-mute">
+                          {f.label}
+                          {current[f.key] && <span className="size-1.5 rounded-full bg-gulal" aria-label="Changed" />}
+                        </span>
+                        <span className="block truncate text-sm">{edits[f.key] || f.value}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : sheet === "pictures" ? (
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {IMAGE_KEYS.map((k) => (
+                  <li key={k}>
+                    <button type="button" onClick={() => openFromList(k)} className="w-full rounded-2xl border border-line p-2 text-left hover:border-royal">
+                      <span className="grid aspect-[4/3] place-items-center overflow-hidden rounded-xl bg-paper-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imgs[k]} alt="" className="max-h-full max-w-full object-contain" />
+                      </span>
+                      <span className="mt-1.5 block truncate text-sm font-bold">
+                        {IMAGE_SLOTS[k].label}
+                        {imgsChanged.includes(k) && <span className="ml-1 text-gulal">•</span>}
+                      </span>
+                      <span className="block truncate text-xs text-ink-mute">{IMAGE_SLOTS[k].where}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : sheet === "parts" ? (
+              <PartsList design={design} onPick={goToPart} />
+            ) : (
+              <DesignSection part={sheet} design={design} setDesign={setDesign} tokens={tokens} focus={focus?.split(":")[0] ?? null} onPart={goToPart} />
+            )}
+          </Sheet>
+        )}
+
+        {/* What was picked: a card beside it on the page (or a sheet on small screens) */}
+        {detail && (
+          <Floating anchor={anchor} onClose={closeDetail}>
+            {block ? (
+              <BlockPanel block={block} design={design} setDesign={setDesign} onClose={closeDetail} />
+            ) : slotKey ? (
+              <div className="p-4">
+                <DetailHeader eyebrow={`Picture · ${IMAGE_SLOTS[slotKey].where}`} title={IMAGE_SLOTS[slotKey].label} onBack={closeDetail} />
+                <div className="grid place-items-center rounded-xl bg-paper-2 p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imgs[slotKey]} alt="" className="max-h-48 w-auto max-w-full rounded-lg object-contain" />
+                </div>
+                <p className="mt-2 text-xs text-ink-soft">{IMAGE_SLOTS[slotKey].hint} Up to 10 MB.</p>
+                <label className={cn("mt-3 flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-gold px-5 text-sm font-bold text-shyam hover:brightness-95", uploading && "pointer-events-none opacity-60")}>
+                  {uploading ? <Spinner /> : <ImageUp className="size-4" aria-hidden />} {uploading ? "Uploading…" : "Upload a new picture"}
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" className="sr-only" onChange={(e) => { void pickFile(slotKey, e.target.files?.[0]); e.target.value = ""; }} />
+                </label>
+                {imgs[slotKey] !== DEFAULT_IMAGES[slotKey] && (
+                  <button type="button" onClick={() => setImage(slotKey, DEFAULT_IMAGES[slotKey])} className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-royal">
+                    <RotateCcw className="size-3.5" aria-hidden /> Use the original picture
+                  </button>
                 )}
               </div>
-            </>
-          )}
-        </aside>
+            ) : field ? (
+              <div className="p-4">
+                <DetailHeader eyebrow={field.groupLabel} title={field.label} onBack={closeDetail} />
+                <textarea
+                  autoFocus
+                  value={value}
+                  onChange={(e) => setValue(field.key, e.target.value)}
+                  rows={Math.min(7, Math.max(2, Math.ceil(value.length / 34)))}
+                  maxLength={600}
+                  className="field text-base"
+                  aria-label={field.label}
+                />
+                {field.hint && <p className="mt-2 text-xs text-ink-soft">{field.hint}</p>}
+                {/\{\w+\}/.test(field.value) && !field.hint && <p className="mt-2 text-xs text-ink-soft">Keep the words in {"{braces}"}: the store fills them in.</p>}
+                {value !== field.value && (
+                  <div className="mt-3 rounded-xl bg-paper-2 p-3 text-sm">
+                    <p className="text-xs text-ink-mute">Original</p>
+                    <p className="text-ink-soft">{field.value}</p>
+                    <button type="button" onClick={() => setValue(field.key, field.value)} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-royal">
+                      <RotateCcw className="size-3.5" aria-hidden /> Use original
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </Floating>
+        )}
+
+        {/* The dock: everything the editor can change, always one tap away */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-[max(14px,env(safe-area-inset-bottom))] z-30 flex justify-center px-3">
+          <nav className="pointer-events-auto flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full bg-ink/92 p-1.5 text-white shadow-float backdrop-blur no-scrollbar" aria-label="Editor">
+            <DockBtn active={sheet === "search"} onClick={() => { closeDetail(); setSheet((s) => (s === "search" ? null : "search")); }} icon={Search} label="Search" />
+            <span className="mx-1 h-6 w-px shrink-0 bg-white/20" aria-hidden />
+            {TABS.map((t) => (
+              <DockBtn key={t.key} active={sheet === t.key} onClick={() => { closeDetail(); setSheet((s) => (s === t.key ? null : t.key)); }} icon={t.icon} label={t.label} />
+            ))}
+          </nav>
+        </div>
       </div>
     </div>
+  );
+}
+
+/** Box of the picked element on the editor screen; fl/fr = left and right edges of the preview frame. */
+type Rect = { x: number; y: number; w: number; h: number; fl?: number; fr?: number };
+
+function DockBtn({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: typeof Search; label: string }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={active} className={cn("inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-bold transition-colors", active ? "bg-paper text-ink" : "text-white/85 hover:bg-white/10 hover:text-white")}>
+      <Icon className="size-4" aria-hidden />
+      <span className="hidden sm:inline">{label}</span>
+    </button>
+  );
+}
+
+/** A dock item's content: a roomy card rising above the dock (a full-width sheet on phones). */
+function Sheet({ title, wide, onClose, children }: { title: string; wide?: boolean; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <section className={cn("absolute bottom-[76px] left-1/2 z-30 flex max-h-[min(72vh,720px)] -translate-x-1/2 flex-col overflow-hidden rounded-3xl border border-line bg-paper shadow-float", wide ? "w-[min(820px,96vw)]" : "w-[min(600px,96vw)]")} aria-label={title}>
+      <header className="flex items-center justify-between border-b border-line px-5 py-3">
+        <p className="font-display text-xl">{title}</p>
+        <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-sky" aria-label="Close">
+          <X className="size-4" />
+        </button>
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+    </section>
+  );
+}
+
+/**
+ * The card for what was picked, placed beside it on the page so you can see the change while you make it.
+ * Falls back to a sheet above the dock when there's no room (phones) or no place on this page.
+ */
+function Floating({ anchor, children }: { anchor: Rect | null; onClose: () => void; children: React.ReactNode }) {
+  const ref = useRef<HTMLElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const box = ref.current?.parentElement?.getBoundingClientRect();
+    const card = ref.current?.getBoundingClientRect();
+    if (!anchor || !box || !card || box.width < 760) return setPos(null);
+    const W = card.width;
+    const gap = 16;
+    const fits = (x: number) => x >= 12 && x + W <= box.width - 12;
+    // Beside the preview frame if there's room (nothing covered), else beside the element itself.
+    const options = [(anchor.fr ?? Infinity) + gap, (anchor.fl ?? -Infinity) - W - gap, anchor.x + anchor.w + gap, anchor.x - W - gap];
+    const left = options.find(fits) ?? Math.max(12, box.width - W - 12);
+    const top = Math.min(Math.max(12, anchor.y), Math.max(12, box.height - card.height - 90));
+    setPos({ left, top });
+  }, [anchor]);
+  return (
+    <section
+      ref={ref}
+      className={cn(
+        "absolute z-30 max-h-[min(70vh,600px)] w-[min(380px,96vw)] overflow-y-auto rounded-3xl border border-line bg-paper shadow-float",
+        !pos && "bottom-[76px] left-1/2 -translate-x-1/2",
+      )}
+      style={pos ? { left: pos.left, top: pos.top } : undefined}
+    >
+      {children}
+    </section>
   );
 }
 
@@ -506,7 +606,7 @@ function Frame({ device, frameKey, path, frame, loading, onLoad }: { device: "ph
   const w = phone ? Math.min(400, size.w) : 1280;
   const scale = phone ? 1 : Math.min(1, size.w / 1280);
   return (
-    <div ref={box} className="relative min-w-0 flex-1 overflow-hidden bg-paper-2">
+    <div ref={box} className="absolute inset-0 overflow-hidden bg-paper-2">
       <iframe
         key={frameKey}
         ref={frame}
@@ -514,7 +614,7 @@ function Frame({ device, frameKey, path, frame, loading, onLoad }: { device: "ph
         title="Store, editable"
         onLoad={onLoad}
         className={cn("absolute top-0 left-1/2 border-0 bg-paper", phone && size.w > 420 && "top-3 rounded-2xl shadow-float")}
-        style={{ width: w, height: phone && size.w > 420 ? size.h - 24 : size.h / scale, transform: `translateX(-50%) scale(${scale})`, transformOrigin: "top center" }}
+        style={{ width: w, height: phone && size.w > 420 ? size.h - 96 : (size.h - 72) / scale, transform: `translateX(-50%) scale(${scale})`, transformOrigin: "top center" }}
       />
       {loading && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center bg-paper-2/60">

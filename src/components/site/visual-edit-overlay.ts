@@ -129,7 +129,8 @@ export function start() {
         const key = blockOf(el);
         if (!key) return;
         selectBlock(key);
-        post({ type: "vv:block", key, count: document.querySelectorAll(BLOCKS[key].selector).length, colors: colorsOf(el) });
+        track(el);
+        post({ type: "vv:block", key, count: document.querySelectorAll(BLOCKS[key].selector).length, colors: colorsOf(el), rect: rectOf(el) });
         return;
       }
       if (mode !== "edit") return;
@@ -144,11 +145,13 @@ export function start() {
       if (textEl && (!product || product.contains(textEl))) {
         document.querySelectorAll(".vv-selected").forEach((x) => x.classList.remove("vv-selected"));
         textEl.classList.add("vv-selected");
-        post({ type: "vv:edit", key: textEl.getAttribute(KEY_ATTR) });
+        track(textEl);
+        post({ type: "vv:edit", key: textEl.getAttribute(KEY_ATTR), rect: rectOf(textEl) });
       } else if (img) {
         document.querySelectorAll(".vv-selected").forEach((x) => x.classList.remove("vv-selected"));
         img.classList.add("vv-selected");
-        post({ type: "vv:image", key: img.getAttribute("data-vv-img") });
+        track(img);
+        post({ type: "vv:image", key: img.getAttribute("data-vv-img"), rect: rectOf(img) });
       } else if (product) post({ type: "vv:open", href: `/admin/products/${product.getAttribute("data-pid")}` });
       else if (section) post({ type: "vv:open", href: section.getAttribute("data-vv-section") });
     },
@@ -209,8 +212,9 @@ export function start() {
       // Picked from the editor's lists: show it, and tell the editor its colours and how many there are.
       const el = key ? document.querySelector(BLOCKS[key].selector) : null;
       if (key && el) {
-        el.scrollIntoView({ block: "center", behavior: "smooth" });
-        post({ type: "vv:blockInfo", key, count: document.querySelectorAll(BLOCKS[key].selector).length, colors: colorsOf(el) });
+        el.scrollIntoView({ block: "center", behavior: "instant" });
+        track(el);
+        post({ type: "vv:blockInfo", key, count: document.querySelectorAll(BLOCKS[key].selector).length, colors: colorsOf(el), rect: rectOf(el) });
       }
     } else if (m.type === "vv:set") {
       // Words with {placeholders} need the server to fill them in; the editor reloads the page for those.
@@ -225,11 +229,38 @@ export function start() {
       });
     } else if (m.type === "vv:select") {
       document.querySelectorAll(".vv-selected").forEach((x) => x.classList.remove("vv-selected"));
-      if (m.key) document.querySelector(`[${KEY_ATTR}="${CSS.escape(m.key)}"], img[data-vv-img="${CSS.escape(m.key)}"]`)?.classList.add("vv-selected");
+      const el = m.key ? document.querySelector(`[${KEY_ATTR}="${CSS.escape(m.key)}"], img[data-vv-img="${CSS.escape(m.key)}"]`) : null;
+      if (!m.key) track(null);
+      if (el) {
+        el.classList.add("vv-selected");
+        // Picked from the editor's lists: bring it into view so the editor can sit next to it.
+        if (tracked !== el) {
+          el.scrollIntoView({ block: "center", behavior: "instant" });
+          track(el);
+          post({ type: "vv:rect", key: m.key, rect: rectOf(el) });
+        }
+      }
     }
   });
 
+  // The element being edited: the editor keeps its floating card next to it, so report where it is on scroll.
+  let tracked: Element | null = null;
+  let rectQueued = 0;
+  function track(el: Element | null) {
+    tracked = el;
+  }
+  const report = () => {
+    if (rectQueued || !tracked) return;
+    rectQueued = requestAnimationFrame(() => {
+      rectQueued = 0;
+      if (tracked?.isConnected) post({ type: "vv:rect", rect: rectOf(tracked) });
+    });
+  };
+  window.addEventListener("scroll", report, { passive: true });
+  window.addEventListener("resize", report);
+
   function selectBlock(key: BlockKey | null) {
+    if (!key) track(null);
     document.querySelectorAll(".vv-block-selected").forEach((x) => x.classList.remove("vv-block-selected"));
     if (key) document.querySelectorAll(BLOCKS[key].selector).forEach((x) => x.classList.add("vv-block-selected"));
   }
@@ -260,4 +291,10 @@ function toHex(css: string) {
   ctx.fillRect(0, 0, 1, 1);
   const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
   return `#${[r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** Where an element is inside the store page's viewport (CSS pixels). */
+function rectOf(el: Element) {
+  const r = el.getBoundingClientRect();
+  return { x: r.left, y: r.top, w: r.width, h: r.height };
 }
